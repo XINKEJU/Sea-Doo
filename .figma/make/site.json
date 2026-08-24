@@ -1,0 +1,10 @@
+{
+  "description": "Showcases premium used Sea-Doo jet skis with cinematic visuals and detailed specs in Russian, enabling luxury buyers to explore inventory and contact sellers easily.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
