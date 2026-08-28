@@ -3,12 +3,14 @@
 // Sea-Doo Inventory CMS API
 // Публичные:  GET  /api/health, /api/products, /api/products/:slug
 //             GET  /api/settings, POST /api/leads
-// Админ:      POST /api/admin/login, POST /api/admin/logout
+// Админ:      POST /api/admin/login (set httpOnly cookie), POST /api/admin/logout
+//             GET /api/admin/me (check session)
 //             GET/POST/PUT/DELETE /api/admin/products[/:slug]
 //             GET /api/admin/leads, PUT/DELETE /api/admin/leads/:id
 //             GET/PUT /api/admin/settings
 //             POST /api/admin/upload (multipart, поле "images")
 // Статика:    /uploads/*
+// Сессия:     httpOnly cookie (seadoo_token), 12h, SameSite=Lax, Secure
 // ------------------------------------------------------------------
 const express = require('express');
 const multer = require('multer');
@@ -27,11 +29,21 @@ const MAX_FILE_MB = 15;
 const LOGIN_MAX_FAILS = 5;
 const LOGIN_LOCK_MS = 10 * 60 * 1000;
 const TOKEN_TTL_MS = 12 * 3600 * 1000;
+const COOKIE_NAME = 'seadoo_token';
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 seedIfEmpty();
 
-// ---------- Auth (in-memory tokens + login rate limit) ----------
+// ---------- Пароль: SHA-256 + timingSafeEqual (защита от timing-атак) ----------
+const ADMIN_HASH = crypto.createHash('sha256').update(String(ADMIN_PASSWORD), 'utf8').digest();
+
+function verifyPassword(pw) {
+  if (typeof pw !== 'string' || pw.length === 0) return false;
+  const h = crypto.createHash('sha256').update(pw, 'utf8').digest();
+  return crypto.timingSafeEqual(h, ADMIN_HASH);
+}
+
+// ---------- Auth (in-memory tokens + httpOnly cookie + rate limit) ----------
 const tokens = new Map(); // token -> expiresAt
 const loginAttempts = new Map(); // ip -> { fails, lockedUntil }
 
@@ -45,15 +57,40 @@ function revokeToken(token) {
   tokens.delete(token);
 }
 
+function parseCookies(req) {
+  const out = {};
+  const h = req.headers.cookie;
+  if (h) {
+    for (const part of h.split(';')) {
+      const i = part.indexOf('=');
+      if (i > 0) {
+        try {
+          out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+        } catch { /* ignore malformed cookie */ }
+      }
+    }
+  }
+  return out;
+}
+
+const COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: true,
+  path: '/',
+  maxAge: TOKEN_TTL_MS,
+};
+
 function requireAuth(req, res, next) {
-  const h = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  const exp = tokens.get(h);
+  const headerToken = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const t = headerToken || parseCookies(req)[COOKIE_NAME] || '';
+  const exp = tokens.get(t);
   if (!exp) return res.status(401).json({ error: 'Неверный или истёкший токен' });
   if (exp < Date.now()) {
-    tokens.delete(h);
+    tokens.delete(t);
     return res.status(401).json({ error: 'Сессия истекла, войдите снова' });
   }
-  req.token = h;
+  req.token = t;
   next();
 }
 
@@ -84,13 +121,17 @@ function recordLoginOk(ip) {
   loginAttempts.delete(ip);
 }
 
+// ---------- CSRF: проверка Origin для записей ----------
+const ALLOWED_ORIGINS = new Set([
+  'https://seadoo.aaatslydaaa.ru',
+  'http://seadoo.aaatslydaaa.ru',
+]);
+
 // ---------- Upload ----------
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase().slice(0, 8) || '.jpg';
-    cb(null, `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`);
-  },
+  // Без расширения от клиента — реальный тип определим по magic bytes
+  filename: (_req, _file, cb) => cb(null, `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`),
 });
 const upload = multer({
   storage,
@@ -104,36 +145,28 @@ const upload = multer({
   },
 });
 
-// Магические сигнатуры файлов (проверка реального содержимого)
-const MAGIC_BYTES = [
-  { name: 'jpeg', bytes: [0xff, 0xd8, 0xff] },
-  { name: 'png', bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
-  { name: 'gif', bytes: [0x47, 0x49, 0x46, 0x38] },
-  { name: 'webp', bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF....WEBP
-  { name: 'webm', bytes: [0x1a, 0x45, 0xdf, 0xa3] },
-];
-
-function looksLikeMedia(filePath) {
+// Определение реального типа по содержимому (magic bytes)
+function detectType(filePath) {
   let head;
   try {
     head = fs.readFileSync(filePath);
   } catch {
-    return false;
+    return null;
   }
-  if (head.length < 12) return false;
-  for (const m of MAGIC_BYTES) {
-    if (m.bytes.every((b, i) => head[i] === b)) return true;
-  }
-  // WebP: RIFF size WEBP (байты 8..11 = WEBP)
-  if (head[0] === 0x52 && head[1] === 0x49 && head[2] === 0x46 && head[3] === 0x46 &&
+  if (head.length < 12) return null;
+  const match = (sig) => sig.every((b, i) => head[i] === b);
+  if (match([0xff, 0xd8, 0xff])) return 'jpg';
+  if (match([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'png';
+  if (match([0x47, 0x49, 0x46, 0x38])) return 'gif';
+  if (match([0x1a, 0x45, 0xdf, 0xa3])) return 'webm';
+  if (match([0x52, 0x49, 0x46, 0x46]) &&
       head[8] === 0x57 && head[9] === 0x45 && head[10] === 0x42 && head[11] === 0x50) {
-    return true;
+    return 'webp';
   }
-  // MP4/MOV: байты 4..7 = 'ftyp'
   if (head[4] === 0x66 && head[5] === 0x74 && head[6] === 0x79 && head[7] === 0x70) {
-    return true;
+    return 'mp4';
   }
-  return false;
+  return null;
 }
 
 // ---------- App ----------
@@ -141,6 +174,16 @@ const app = express();
 app.set('trust proxy', true); // nginx proxy -> req.ip = X-Forwarded-For
 app.use(express.json({ limit: '2mb' }));
 app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '30d', immutable: true }));
+
+// CSRF: отклонять записи с чужого Origin (браузеры всегда шлют Origin на POST)
+app.use((req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+  const origin = req.headers.origin;
+  if (origin && !ALLOWED_ORIGINS.has(origin)) {
+    return res.status(403).json({ error: 'Origin forbidden' });
+  }
+  next();
+});
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, time: Date.now() }));
 
@@ -156,8 +199,8 @@ app.get('/api/products/:slug', (req, res) => {
 // ---------- Public: settings ----------
 app.get('/api/settings', (_req, res) => res.json(store.getSettings()));
 
-// ---------- Public: leads (заявки) ----------
-const leadSubmits = new Map(); // ip -> last submit ts (простая защита от спама)
+// ---------- Public: leads ----------
+const leadSubmits = new Map(); // ip -> last submit ts
 app.post('/api/leads', (req, res) => {
   const ip = ipOf(req);
   const now = Date.now();
@@ -179,9 +222,11 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(429).json({ error: `Слишком много попыток. Подождите ${locked} сек.` });
   }
   const { password } = req.body || {};
-  if (password && password === ADMIN_PASSWORD) {
+  if (verifyPassword(password)) {
     recordLoginOk(ip);
-    res.json({ token: issueToken() });
+    const token = issueToken();
+    res.cookie(COOKIE_NAME, token, COOKIE_OPTS);
+    res.json({ ok: true });
   } else {
     recordLoginFail(ip);
     res.status(401).json({ error: 'Неверный пароль' });
@@ -190,8 +235,11 @@ app.post('/api/admin/login', (req, res) => {
 
 app.use('/api/admin', requireAuth);
 
+app.get('/api/admin/me', (req, res) => res.json({ ok: true }));
+
 app.post('/api/admin/logout', (req, res) => {
   if (req.token) revokeToken(req.token);
+  res.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'lax', secure: true });
   res.json({ ok: true });
 });
 
@@ -249,12 +297,18 @@ app.post('/api/admin/upload', upload.array('images', MAX_IMAGES), (req, res) => 
   const urls = [];
   let rejected = 0;
   for (const f of req.files) {
-    if (looksLikeMedia(f.path)) {
-      urls.push(`/uploads/${f.filename}`);
-    } else {
+    const type = detectType(f.path);
+    if (type) {
+      const finalName = `${path.basename(f.filename)}.${type}`;
       try {
-        fs.unlinkSync(f.path);
-      } catch { /* ignore */ }
+        fs.renameSync(f.path, path.join(UPLOAD_DIR, finalName));
+        urls.push(`/uploads/${finalName}`);
+      } catch {
+        try { fs.unlinkSync(f.path); } catch { /* ignore */ }
+        rejected += 1;
+      }
+    } else {
+      try { fs.unlinkSync(f.path); } catch { /* ignore */ }
       rejected += 1;
     }
   }

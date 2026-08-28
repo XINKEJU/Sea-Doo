@@ -3,8 +3,6 @@ import { useNavigate } from "react-router";
 import type { JetSki } from "../data/inventory";
 import { api, DEFAULT_SETTINGS, type Lead, type SiteSettings } from "../api";
 
-const TOKEN_KEY = "seadoo_admin_token";
-
 type Tab = "products" | "leads" | "settings";
 
 type FormState = {
@@ -84,25 +82,30 @@ function fromForm(f: FormState): Partial<JetSki> {
  * ================================================================ */
 export default function Admin() {
   const navigate = useNavigate();
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  // null = 校验会话中；会话存 httpOnly cookie，前端无法读取，统一由 /me 判定
+  const [authed, setAuthed] = useState<boolean | null>(null);
   const [tab, setTab] = useState<Tab>("products");
   const [editing, setEditing] = useState<JetSki | null>(null);
 
+  useEffect(() => {
+    api.me().then(setAuthed);
+  }, []);
+
   const logout = async () => {
     await api.logout().catch(() => {});
-    localStorage.removeItem(TOKEN_KEY);
-    setToken(null);
+    setAuthed(false);
   };
 
-  if (!token) {
+  if (authed === null) {
     return (
-      <Login
-        onSuccess={(t) => {
-          localStorage.setItem(TOKEN_KEY, t);
-          setToken(t);
-        }}
-      />
+      <div style={{ minHeight: "100vh", background: "#F4F2EE", display: "flex", alignItems: "center", justifyContent: "center", color: "#666666", fontSize: "13px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+        Проверка сессии...
+      </div>
     );
+  }
+
+  if (!authed) {
+    return <Login onSuccess={() => setAuthed(true)} />;
   }
 
   if (editing) {
@@ -183,7 +186,7 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
 /* ================================================================
  * Login
  * ================================================================ */
-function Login({ onSuccess }: { onSuccess: (token: string) => void }) {
+function Login({ onSuccess }: { onSuccess: () => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -193,8 +196,8 @@ function Login({ onSuccess }: { onSuccess: (token: string) => void }) {
     setBusy(true);
     setError("");
     try {
-      const t = await api.login(password);
-      onSuccess(t);
+      await api.login(password);
+      onSuccess();
     } catch (err) {
       setError((err as Error).message || "Ошибка входа");
     } finally {

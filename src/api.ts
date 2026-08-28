@@ -65,114 +65,111 @@ async function j<T>(r: Response): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-function authHeaders(): Record<string, string> {
-  const t = localStorage.getItem("seadoo_admin_token");
-  return t ? { Authorization: `Bearer ${t}` } : {};
+// 会话走 httpOnly cookie（同源自动携带），不存 localStorage
+async function req(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return fetch(input, { credentials: "include", ...init });
 }
 
 export const api = {
   // ---- public ----
   async listProducts(): Promise<JetSki[]> {
-    return j<JetSki[]>(await fetch(`${BASE}/products`));
+    return j<JetSki[]>(await req(`${BASE}/products`));
   },
   async getProduct(slug: string): Promise<JetSki> {
-    return j<JetSki>(await fetch(`${BASE}/products/${encodeURIComponent(slug)}`));
+    return j<JetSki>(await req(`${BASE}/products/${encodeURIComponent(slug)}`));
   },
   async getSettings(): Promise<SiteSettings> {
-    return j<SiteSettings>(await fetch(`${BASE}/settings`));
+    return j<SiteSettings>(await req(`${BASE}/settings`));
   },
   async submitLead(data: { name: string; phone: string; message: string; subject: string }): Promise<void> {
     await j<{ ok: boolean }>(
-      await fetch(`${BASE}/leads`, {
+      await req(`${BASE}/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       })
     );
   },
-  // ---- admin auth ----
-  async login(password: string): Promise<string> {
-    const data = await j<{ token: string }>(
-      await fetch(`${BASE}/admin/login`, {
+  // ---- admin auth (httpOnly cookie) ----
+  async login(password: string): Promise<void> {
+    await j<{ ok: boolean }>(
+      await req(`${BASE}/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       })
     );
-    return data.token;
+  },
+  async me(): Promise<boolean> {
+    try {
+      await j<{ ok: boolean }>(await req(`${BASE}/admin/me`));
+      return true;
+    } catch {
+      return false;
+    }
   },
   async logout(): Promise<void> {
-    await fetch(`${BASE}/admin/logout`, { method: "POST", headers: authHeaders() }).catch(() => {});
+    await req(`${BASE}/admin/logout`, { method: "POST" }).catch(() => {});
   },
   // ---- admin products ----
   async createProduct(p: Partial<JetSki>): Promise<JetSki> {
     return j<JetSki>(
-      await fetch(`${BASE}/admin/products`, {
+      await req(`${BASE}/admin/products`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(p),
       })
     );
   },
   async updateProduct(slug: string, p: Partial<JetSki>): Promise<JetSki> {
     return j<JetSki>(
-      await fetch(`${BASE}/admin/products/${encodeURIComponent(slug)}`, {
+      await req(`${BASE}/admin/products/${encodeURIComponent(slug)}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(p),
       })
     );
   },
   async deleteProduct(slug: string): Promise<void> {
     await j<{ ok: boolean }>(
-      await fetch(`${BASE}/admin/products/${encodeURIComponent(slug)}`, {
-        method: "DELETE",
-        headers: authHeaders(),
-      })
+      await req(`${BASE}/admin/products/${encodeURIComponent(slug)}`, { method: "DELETE" })
     );
   },
   async upload(files: File[]): Promise<string[]> {
     const fd = new FormData();
     files.forEach((f) => fd.append("images", f));
     const data = await j<{ urls: string[] }>(
-      await fetch(`${BASE}/admin/upload`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: fd,
-      })
+      await req(`${BASE}/admin/upload`, { method: "POST", body: fd })
     );
     return data.urls;
   },
   // ---- admin leads ----
   async getLeads(): Promise<Lead[]> {
-    return j<Lead[]>(await fetch(`${BASE}/admin/leads`, { headers: authHeaders() }));
+    return j<Lead[]>(await req(`${BASE}/admin/leads`));
   },
   async updateLead(id: string, patch: { status: "new" | "read" }): Promise<Lead> {
     return j<Lead>(
-      await fetch(`${BASE}/admin/leads/${encodeURIComponent(id)}`, {
+      await req(`${BASE}/admin/leads/${encodeURIComponent(id)}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       })
     );
   },
   async deleteLead(id: string): Promise<void> {
     await j<{ ok: boolean }>(
-      await fetch(`${BASE}/admin/leads/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: authHeaders(),
-      })
+      await req(`${BASE}/admin/leads/${encodeURIComponent(id)}`, { method: "DELETE" })
     );
   },
   // ---- admin settings ----
   async getAdminSettings(): Promise<SiteSettings> {
-    return j<SiteSettings>(await fetch(`${BASE}/admin/settings`, { headers: authHeaders() }));
+    return j<SiteSettings>(await req(`${BASE}/admin/settings`));
   },
   async updateSettings(s: Partial<SiteSettings>): Promise<SiteSettings> {
     return j<SiteSettings>(
-      await fetch(`${BASE}/admin/settings`, {
+      await req(`${BASE}/admin/settings`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(s),
       })
     );
