@@ -38,6 +38,8 @@ export default function ProductDetail() {
   useEffect(() => {
     if (!slug) return;
     let alive = true;
+    // slug 变化时立即重置，避免显示上一辆车的旧数据
+    setItem(inventory.find((i) => i.slug === slug));
     api
       .listProducts()
       .then((list) => {
