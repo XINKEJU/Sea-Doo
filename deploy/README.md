@@ -1,32 +1,43 @@
-# Sea-Doo 部署脚本
+# Sea-Doo 部署工具
 
 服务器：`170.168.89.127`（root），站点：`https://seadoo.aaatslydaaa.ru`
 
-所有脚本通过 **paramiko** 连接，密码从环境变量读取（**严禁硬编码/提交明文**）：
-
-| 脚本 | 用途 | 必需环境变量 |
-|---|---|---|
-| `deploy_seadoo.py` | 构建后上传前端 `dist/` + 写 nginx conf + 重载 | `SSHPASS` |
-| `deploy_seadoo_api.py` | 上传后端 `server/`、注入 `.env` 密码、改 compose、chown data/uploads、重建 seadoo-api 容器、应用 nginx conf（HTTPS+CSP） | `SSHPASS`、`SEADOO_ADMIN_PASSWORD` |
-| `verify_https.py` | HTTPS 全链路验证（页面/API/301） | `SSHPASS` |
-| `verify_seadoo.py` | 站点 vhost/DNS/静态资源验证 | `SSHPASS` |
+统一入口 `deploy.py`（paramiko），密码只从环境变量读取（**严禁硬编码/提交明文**）。
 
 ## 用法（Windows Git Bash）
 
 ```bash
-# 静态站点部署
-SSHPASS='<服务器密码>' python deploy/deploy_seadoo.py
+# 前端：构建后上传 dist/
+SSHPASS='<服务器密码>' python deploy/deploy.py front
 
-# 后端部署（后台密码需与服务器 .env 中 SEADOO_ADMIN_PASSWORD 一致）
-SSHPASS='<服务器密码>' SEADOO_ADMIN_PASSWORD='<后台密码>' python deploy/deploy_seadoo_api.py
+# 后端：server 上传 + compose 归一化（version 移除/healthcheck/挂载）+ chown + 容器重建 + nginx conf
+SSHPASS='<服务器密码>' SEADOO_ADMIN_PASSWORD='<后台密码>' python deploy/deploy.py api
+
+# 仅应用 nginx seadoo.conf（HTTPS/gzip/CSP/upstream）并 reload
+SSHPASS='<服务器密码>' python deploy/deploy.py conf
 
 # 验证
-SSHPASS='<服务器密码>' python deploy/verify_https.py
+SSHPASS='<服务器密码>' python deploy/deploy.py verify-https   # HTTPS 全链路
+SSHPASS='<服务器密码>' python deploy/deploy.py verify-site    # DNS/vhost/主站
 ```
+
+## 子命令说明
+
+| 子命令 | 用途 | 环境变量 |
+|---|---|---|
+| `front` | 清空远端 assets + 上传 `dist/` | `SSHPASS` |
+| `api` | 上传 `server/`、注入 `.env`、compose 归一化（幂等：移除 `version`、补 seadoo-api/healthcheck/nginx uploads 挂载）、`chown 1000:1000`、重建容器、应用 nginx conf | `SSHPASS`、`SEADOO_ADMIN_PASSWORD` |
+| `conf` | 仅写 `seadoo.conf` + `nginx -t` + reload | `SSHPASS` |
+| `verify-https` | HTTPS 页面/API/301 巡检 | `SSHPASS` |
+| `verify-site` | DNS/vhost/主站巡检 | `SSHPASS` |
+
+## 内置配置（权威版本，全部在此脚本中）
+
+- **nginx seadoo.conf**：Let's Encrypt 443 + HTTP 301 + acme 路径 + `upstream seadoo_api`（max_fails 兜底）+ gzip（js/css/json/svg + 代理响应）+ CSP 等安全头 + API no-store + `/uploads` 静态。
+- **docker-compose 归一化**：幂等移除废弃 `version` 字段；seadoo-api 容器带 healthcheck（wget /api/health）；nginx 挂载 uploads。
 
 ## 注意
 
-- 本地路径已相对化（基于脚本所在 `deploy/` 目录向上取 `dist/`、`server/`），任意机器 clone 后可直接运行。
-- 含明文测试密码的临时验证脚本保留在本地 `.workbuddy/`（已 gitignore），不提交。
-- nginx HTTPS 配置（Let's Encrypt 证书 + 443 + HTTP 301 + CSP + API no-store）内置在 `deploy_seadoo_api.py` 的 `SEADOO_CONF` 中，重新部署会自动应用。
-- 密码只从环境变量读取：`SSHPASS`（服务器 root）、`SEADOO_ADMIN_PASSWORD`（后台管理，注入服务器 .env）。
+- 本地路径已相对化（`deploy/` 向上取 `dist/`、`server/`），任意机器 clone 后可直接运行。
+- SSH 偶发 banner 超时，脚本内置 5 次重试。
+- 含明文测试密码的临时验证脚本保留在本地 `.workbuddy/`（gitignore），不提交。

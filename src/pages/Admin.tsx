@@ -16,6 +16,7 @@ type FormState = {
   trailer: string;
   documents: string;
   price: string;
+  priceValue: string;
   status: "available" | "sold";
   description: string;
   heroImage: string;
@@ -33,6 +34,7 @@ const emptyForm: FormState = {
   trailer: "",
   documents: "",
   price: "",
+  priceValue: "",
   status: "available",
   description: "",
   heroImage: "",
@@ -51,6 +53,7 @@ function toForm(p: JetSki): FormState {
     trailer: p.trailer || "",
     documents: p.documents || "",
     price: p.price || "",
+    priceValue: String(p.priceValue ?? ""),
     status: p.status === "sold" ? "sold" : "available",
     description: p.description || "",
     heroImage: p.heroImage || "",
@@ -70,6 +73,7 @@ function fromForm(f: FormState): Partial<JetSki> {
     trailer: f.trailer.trim(),
     documents: f.documents.trim(),
     price: f.price.trim(),
+    priceValue: Number(f.priceValue),
     status: f.status,
     description: f.description.trim(),
     heroImage: f.heroImage,
@@ -676,6 +680,9 @@ function Editor({
             </Field>
             <Field label="价格 Price">
               <input value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="1 850 000 ₽" style={inputStyle} />
+            </Field>
+            <Field label="价格数字（排序/统计）">
+              <input type="number" value={form.priceValue} onChange={(e) => set("priceValue", e.target.value)} placeholder="1850000" style={inputStyle} />
             </Field>
             <Field label="状态 Status">
               <select value={form.status} onChange={(e) => set("status", e.target.value as FormState["status"])} style={inputStyle}>

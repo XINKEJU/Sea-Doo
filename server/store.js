@@ -44,7 +44,13 @@ function clip(v, max) {
 // Products (каталог)
 // ================================================================
 function getProducts() {
-  return load().products;
+  // 向后兼容：老数据缺 priceValue 时从展示价格动态解析（不落库，编辑后持久化）
+  return load().products.map((p) => {
+    if (p.priceValue === undefined && p.price !== undefined) {
+      return { ...p, priceValue: Number(String(p.price).replace(/[^\d]/g, '')) || 0 };
+    }
+    return p;
+  });
 }
 
 function findProduct(slug) {
@@ -71,7 +77,7 @@ function deleteProduct(slug) {
 
 const FIELDS = [
   'model', 'year', 'hours', 'hp', 'engine', 'seats', 'system',
-  'trailer', 'documents', 'price', 'status', 'description',
+  'trailer', 'documents', 'price', 'priceValue', 'status', 'description',
   'heroImage', 'images',
 ];
 
@@ -104,6 +110,11 @@ function sanitize(data, { partial = false } = {}) {
   if (out.status !== 'sold') out.status = 'available';
   if (!Array.isArray(out.images)) out.images = [];
   if (out.images.length > 20) out.images = out.images.slice(0, 20);
+  // priceValue：数字价格（用于排序/统计）；缺失时从展示价格自动解析
+  if (out.priceValue !== undefined) out.priceValue = Number(out.priceValue) || 0;
+  if (out.price !== undefined && out.priceValue === undefined) {
+    out.priceValue = Number(String(out.price).replace(/[^\d]/g, '')) || 0;
+  }
   // текстовые поля — обрезаем
   for (const k of ['model', 'engine', 'system', 'trailer', 'documents', 'price', 'description', 'heroImage']) {
     if (typeof out[k] === 'string') out[k] = out[k].slice(0, MAX_TEXT);
