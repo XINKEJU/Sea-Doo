@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import type { JetSki } from "../data/inventory";
 import { api, DEFAULT_SETTINGS, type Lead, type SiteSettings } from "../api";
@@ -250,12 +250,17 @@ function ProductsTab({ onNew, onEdit }: { onNew: () => void; onEdit: (p: JetSki)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const refresh = () => {
-    setLoading(true);
-    setError("");
-    api.listProducts().then(setProducts).catch((e) => setError((e as Error).message)).finally(() => setLoading(false));
-  };
-  useEffect(refresh, []);
+  const refresh = useCallback(() => {
+    // loading 初始为 true；刷新只更新数据与错误，不重置 loading（避免删除后闪加载态）
+    api
+      .listProducts()
+      .then(setProducts)
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false));
+  }, []);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const remove = async (p: JetSki) => {
     if (!window.confirm(`Удалить «${p.model}»?`)) return;
@@ -325,12 +330,17 @@ function LeadsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const refresh = () => {
-    setLoading(true);
-    setError("");
-    api.getLeads().then(setLeads).catch((e) => setError((e as Error).message)).finally(() => setLoading(false));
-  };
-  useEffect(refresh, []);
+  const refresh = useCallback(() => {
+    // loading 初始为 true；刷新只更新数据与错误，不重置 loading（避免删除后闪加载态）
+    api
+      .getLeads()
+      .then(setLeads)
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false));
+  }, []);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const markRead = async (l: Lead) => {
     if (l.status === "read") return;

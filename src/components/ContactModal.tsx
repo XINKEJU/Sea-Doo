@@ -17,15 +17,22 @@ export default function ContactModal({ open, onClose, subject }: ContactModalPro
   const [errorText, setErrorText] = useState("");
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  // 渲染期状态调整（React 官方推荐，替代 effect 内 setState）：
+  // subject prop 变化时同步 message；modal 重新打开时重置提交状态
+  const [prevSubject, setPrevSubject] = useState(subject);
+  if (subject !== prevSubject) {
+    setPrevSubject(subject);
     if (subject) setMessage(subject);
-  }, [subject]);
+  }
 
-  useEffect(() => {
-    if (!open) return;
-    setState("idle");
-    setErrorText("");
-  }, [open]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setState("idle");
+      setErrorText("");
+    }
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

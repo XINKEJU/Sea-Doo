@@ -2,7 +2,8 @@ FROM node:22-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --omit=dev && npm cache clean --force
+# npm ci：依赖 package-lock.json 精确安装，构建可复现且更快
+RUN npm ci --omit=dev && npm cache clean --force
 
 COPY . .
 

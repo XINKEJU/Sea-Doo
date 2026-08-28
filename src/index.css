@@ -27,3 +27,18 @@ body {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 2px;
 }
+/* Firefox 等宽细滚动条（兼容非 webkit 内核） */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+/* 移动端地址栏折叠时避免底部留白/遮挡（dvh 降级 vh） */
+.hero-vh {
+  height: 100vh;
+}
+@supports (height: 100dvh) {
+  .hero-vh {
+    height: 100dvh;
+  }
+}

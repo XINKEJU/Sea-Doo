@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 
 interface HeaderProps {
   onContact: () => void;
@@ -53,8 +54,8 @@ export default function Header({
           justifyContent: "space-between",
         }}
       >
-        <a
-          href="/"
+        <Link
+          to="/"
           style={{
             textDecoration: "none",
             display: "flex",
@@ -86,7 +87,7 @@ export default function Header({
           >
             {brandSub}
           </span>
-        </a>
+        </Link>
 
         <button
           onClick={onContact}

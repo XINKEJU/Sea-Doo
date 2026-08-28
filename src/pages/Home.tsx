@@ -51,8 +51,8 @@ export default function Home() {
 
       {/* HERO */}
       <section
+        className="hero-vh"
         style={{
-          height: "100vh",
           position: "relative",
           overflow: "hidden",
           background: "#111111",

@@ -22,7 +22,7 @@ export default function ProductDetail() {
   const [contactOpen, setContactOpen] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
-  const [item, setItem] = useState<JetSki | undefined>(() =>
+  const [serverItem, setServerItem] = useState<JetSki | undefined>(() =>
     inventory.find((i) => i.slug === slug)
   );
 
@@ -38,13 +38,11 @@ export default function ProductDetail() {
   useEffect(() => {
     if (!slug) return;
     let alive = true;
-    // slug 变化时立即重置，避免显示上一辆车的旧数据
-    setItem(inventory.find((i) => i.slug === slug));
+    // 按 slug 精确拉取单条（比拉全量列表更省流量）
     api
-      .listProducts()
-      .then((list) => {
-        const found = list.find((i) => i.slug === slug);
-        if (alive && found) setItem(found);
+      .getProduct(slug)
+      .then((found) => {
+        if (alive) setServerItem(found);
       })
       .catch(() => {
         /* fallback to built-in data */
@@ -53,6 +51,12 @@ export default function ProductDetail() {
       alive = false;
     };
   }, [slug]);
+
+  // 派生状态：slug 变化后、新数据返回前，回退到本地库存，避免残留上一辆车的数据
+  const item =
+    serverItem && serverItem.slug === slug
+      ? serverItem
+      : inventory.find((i) => i.slug === slug);
 
   if (!item) {
     return (

@@ -22,7 +22,12 @@ const store = require('./store');
 const { seedIfEmpty } = require('./seed');
 
 const PORT = process.env.PORT || 8080;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'change-me';
+// 安全加固：拒绝使用默认密码启动，防止忘记配置环境变量时后台以公开密码暴露
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+if (!ADMIN_PASSWORD) {
+  console.error('[fatal] ADMIN_PASSWORD env var is required. Refusing to start with a default password.');
+  process.exit(1);
+}
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
 const MAX_IMAGES = 12;
 const MAX_FILE_MB = 15;
@@ -108,8 +113,9 @@ function loginAllowed(ip) {
 }
 
 function recordLoginFail(ip) {
-  const rec = loginAttempts.get(ip) || { fails: 0, lockedUntil: 0 };
+  const rec = loginAttempts.get(ip) || { fails: 0, lockedUntil: 0, lastFail: 0 };
   rec.fails += 1;
+  rec.lastFail = Date.now();
   if (rec.fails >= LOGIN_MAX_FAILS) {
     rec.lockedUntil = Date.now() + LOGIN_LOCK_MS;
     rec.fails = 0;
@@ -120,6 +126,18 @@ function recordLoginFail(ip) {
 function recordLoginOk(ip) {
   loginAttempts.delete(ip);
 }
+
+// ---------- 定期清理内存态会话/限速记录，防止缓慢增长 ----------
+function sweepMaps() {
+  const now = Date.now();
+  for (const [t, exp] of tokens) if (exp < now) tokens.delete(t);
+  for (const [ip, rec] of loginAttempts) {
+    if (rec.lockedUntil && rec.lockedUntil < now) loginAttempts.delete(ip);
+    else if (now - (rec.lastFail || 0) > 30 * 60 * 1000) loginAttempts.delete(ip);
+  }
+  for (const [ip, ts] of leadSubmits) if (now - ts > 15 * 60 * 1000) leadSubmits.delete(ip);
+}
+setInterval(sweepMaps, 10 * 60 * 1000).unref();
 
 // ---------- CSRF: проверка Origin для записей ----------
 const ALLOWED_ORIGINS = new Set([
@@ -319,6 +337,9 @@ app.post('/api/admin/upload', upload.array('images', MAX_IMAGES), (req, res) => 
 });
 
 // ---------- Errors ----------
+// 未匹配的 /api 路由返回 JSON 404（避免泄漏 HTML 默认页）
+app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
+
 app.use((err, _req, res, _next) => {
   const msg = err && err.message ? err.message : 'Ошибка сервера';
   res.status(err && err.status ? err.status : 400).json({ error: msg });
