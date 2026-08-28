@@ -2,13 +2,17 @@
 // ------------------------------------------------------------------
 // Простое JSON-хранилище с атомарной записью.
 // Файл данных: DATA_DIR/db.json  (по умолчанию ./data/db.json)
-// Подходит для каталога на десятки товаров, легко бэкапится.
+// Структура: { products: [], leads: [], settings: {} }
 // ------------------------------------------------------------------
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
+
+const MAX_TEXT = 2000; // максимальная длина текстовых полей
+const MAX_LIST = 500; // максимум записей в коллекции
 
 let cache = null;
 
@@ -17,9 +21,11 @@ function load() {
   try {
     cache = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   } catch {
-    cache = { products: [] };
+    cache = {};
   }
   if (!Array.isArray(cache.products)) cache.products = [];
+  if (!Array.isArray(cache.leads)) cache.leads = [];
+  if (!cache.settings || typeof cache.settings !== 'object') cache.settings = {};
   return cache;
 }
 
@@ -30,7 +36,13 @@ function save() {
   fs.renameSync(tmp, DB_FILE);
 }
 
-// ---------- API ----------
+function clip(v, max) {
+  return String(v == null ? '' : v).slice(0, max);
+}
+
+// ================================================================
+// Products (каталог)
+// ================================================================
 function getProducts() {
   return load().products;
 }
@@ -57,7 +69,6 @@ function deleteProduct(slug) {
   return true;
 }
 
-// ---------- Валидация / нормализация ----------
 const FIELDS = [
   'model', 'year', 'hours', 'hp', 'engine', 'seats', 'system',
   'trailer', 'documents', 'price', 'status', 'description',
@@ -92,6 +103,11 @@ function sanitize(data, { partial = false } = {}) {
   if (out.seats !== undefined) out.seats = Number(out.seats) || 1;
   if (out.status !== 'sold') out.status = 'available';
   if (!Array.isArray(out.images)) out.images = [];
+  if (out.images.length > 20) out.images = out.images.slice(0, 20);
+  // текстовые поля — обрезаем
+  for (const k of ['model', 'engine', 'system', 'trailer', 'documents', 'price', 'description', 'heroImage']) {
+    if (typeof out[k] === 'string') out[k] = out[k].slice(0, MAX_TEXT);
+  }
   if (!partial) {
     if (!out.model) throw new Error('Поле "Модель" обязательно');
     if (!out.heroImage && out.images.length > 0) out.heroImage = out.images[0];
@@ -115,12 +131,103 @@ function updateProduct(slug, data) {
   return upsertProduct(merged);
 }
 
+// ================================================================
+// Leads (заявки с сайта)
+// ================================================================
+function getLeads() {
+  return [...load().leads].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+function findLead(id) {
+  return load().leads.find((l) => l.id === id) || null;
+}
+
+function addLead(data) {
+  const db = load();
+  const lead = {
+    id: crypto.randomUUID(),
+    name: clip(data.name, 100),
+    phone: clip(data.phone, 60),
+    subject: clip(data.subject, 240),
+    message: clip(data.message, MAX_TEXT),
+    status: 'new',
+    createdAt: Date.now(),
+  };
+  if (!lead.name && !lead.phone) return null;
+  db.leads.push(lead);
+  if (db.leads.length > MAX_LIST) db.leads = db.leads.slice(-MAX_LIST);
+  save();
+  return lead;
+}
+
+function updateLead(id, patch) {
+  const db = load();
+  const l = db.leads.find((x) => x.id === id);
+  if (!l) return null;
+  if (patch && (patch.status === 'read' || patch.status === 'new')) l.status = patch.status;
+  save();
+  return l;
+}
+
+function deleteLead(id) {
+  const db = load();
+  const before = db.leads.length;
+  db.leads = db.leads.filter((x) => x.id !== id);
+  if (db.leads.length === before) return false;
+  save();
+  return true;
+}
+
+// ================================================================
+// Settings (настройки сайта)
+// ================================================================
+const DEFAULT_SETTINGS = {
+  brandName: 'SEA-DOO',
+  brandSub: 'PREMIUM USED',
+  footerBrand: 'SEA-DOO PREMIUM USED',
+  footerSlogan: 'Премиальный шоурум б/у гидроциклов',
+  cityText: 'Гидроциклы · Москва и регионы',
+  copyrightText: '© 2025 SEA-DOO PREMIUM USED. Все права защищены.',
+  contactLabel: 'СВЯЗАТЬСЯ',
+  phone: '',
+  email: '',
+  address: '',
+  heroVideo: '/uploads/e40bf07571c426c3e2f297fc00cea830.mp4',
+  heroImage:
+    'https://images.unsplash.com/photo-1649291390039-3d5640328a5a?w=2400&h=1400&fit=crop&auto=format',
+  heroOpacity: '0.55',
+  sectionLabel: 'ТЕКУЩИЙ СКЛАД',
+  sectionTitle: 'В НАЛИЧИИ И НЕДАВНО ПРОДАННОЕ',
+  availableLabel: 'доступно',
+  soldLabel: 'ПРОДАНО',
+  inStockLabel: 'В НАЛИЧИИ',
+};
+
+function getSettings() {
+  return { ...DEFAULT_SETTINGS, ...load().settings };
+}
+
+function sanitizeSettings(src) {
+  const out = {};
+  if (!src || typeof src !== 'object') return out;
+  for (const k of Object.keys(DEFAULT_SETTINGS)) {
+    if (src[k] !== undefined && src[k] !== null) out[k] = String(src[k]).slice(0, 500);
+  }
+  return out;
+}
+
+function updateSettings(patch) {
+  const db = load();
+  db.settings = { ...DEFAULT_SETTINGS, ...db.settings, ...sanitizeSettings(patch) };
+  save();
+  return getSettings();
+}
+
 module.exports = {
-  getProducts,
-  findProduct,
-  upsertProduct,
-  deleteProduct,
-  createProduct,
-  updateProduct,
-  uniqueSlug,
+  // products
+  getProducts, findProduct, upsertProduct, deleteProduct, createProduct, updateProduct, uniqueSlug,
+  // leads
+  getLeads, findLead, addLead, updateLead, deleteLead,
+  // settings
+  getSettings, updateSettings,
 };

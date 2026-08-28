@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router";
 import Header from "../components/Header";
 import ContactModal from "../components/ContactModal";
 import { inventory, type JetSki } from "../data/inventory";
-import { api } from "../api";
+import { api, DEFAULT_SETTINGS, type SiteSettings } from "../api";
 
 const SPEC_LABELS: Record<string, string> = {
   year: "ГОД",
@@ -21,9 +21,19 @@ export default function ProductDetail() {
   const navigate = useNavigate();
   const [contactOpen, setContactOpen] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [item, setItem] = useState<JetSki | undefined>(() =>
     inventory.find((i) => i.slug === slug)
   );
+
+  useEffect(() => {
+    api
+      .getSettings()
+      .then((s) => {
+        if (s) setSettings({ ...DEFAULT_SETTINGS, ...s });
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
@@ -96,7 +106,13 @@ export default function ProductDetail() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#F4F2EE" }}>
-      <Header onContact={() => setContactOpen(true)} forceLight />
+      <Header
+        onContact={() => setContactOpen(true)}
+        forceLight
+        brandName={settings.brandName}
+        brandSub={settings.brandSub}
+        contactLabel={settings.contactLabel}
+      />
       <ContactModal
         open={contactOpen}
         onClose={() => setContactOpen(false)}
@@ -211,6 +227,7 @@ export default function ProductDetail() {
                 <img
                   src={img}
                   alt={`Миниатюра ${idx + 1}`}
+                  loading="lazy"
                   style={{
                     width: "100%",
                     height: "100%",
@@ -354,6 +371,7 @@ export default function ProductDetail() {
                     <img
                       src={img}
                       alt={`${item.model} — детальное фото ${idx + 1}`}
+                      loading="lazy"
                       style={{
                         width: "100%",
                         height: "100%",
@@ -516,10 +534,10 @@ export default function ProductDetail() {
           }}
         >
           <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
-            © 2025 SEA-DOO PREMIUM USED
+            {settings.copyrightText}
           </span>
           <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
-            Гидроциклы · Москва и регионы
+            {settings.cityText}
           </span>
         </div>
       </footer>

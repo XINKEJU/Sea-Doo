@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { api } from "../api";
 
 interface ContactModalProps {
   open: boolean;
@@ -6,16 +7,25 @@ interface ContactModalProps {
   subject?: string;
 }
 
+type SubmitState = "idle" | "sending" | "sent" | "error";
+
 export default function ContactModal({ open, onClose, subject }: ContactModalProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState(subject || "");
-  const [sent, setSent] = useState(false);
+  const [state, setState] = useState<SubmitState>("idle");
+  const [errorText, setErrorText] = useState("");
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (subject) setMessage(subject);
   }, [subject]);
+
+  useEffect(() => {
+    if (!open) return;
+    setState("idle");
+    setErrorText("");
+  }, [open]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -30,16 +40,25 @@ export default function ContactModal({ open, onClose, subject }: ContactModalPro
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
-    setTimeout(() => {
-      setSent(false);
-      setName("");
-      setPhone("");
-      setMessage("");
-      onClose();
-    }, 2400);
+    if (state === "sending") return;
+    setState("sending");
+    setErrorText("");
+    try {
+      await api.submitLead({ name, phone, message, subject: subject || "" });
+      setState("sent");
+      setTimeout(() => {
+        setState("idle");
+        setName("");
+        setPhone("");
+        setMessage("");
+        onClose();
+      }, 2400);
+    } catch (err) {
+      setErrorText((err as Error).message || "Ошибка отправки");
+      setState("error");
+    }
   };
 
   if (!open) return null;
@@ -111,7 +130,7 @@ export default function ContactModal({ open, onClose, subject }: ContactModalPro
           ✕
         </button>
 
-        {sent ? (
+        {state === "sent" ? (
           <div style={{ textAlign: "center", padding: "24px 0" }}>
             <div style={{ fontSize: "13px", letterSpacing: "0.16em", textTransform: "uppercase", color: "#666666", marginBottom: "12px" }}>
               ОТПРАВЛЕНО
@@ -173,8 +192,13 @@ export default function ContactModal({ open, onClose, subject }: ContactModalPro
                 />
               </div>
 
+              {errorText && (
+                <div style={{ color: "#B00020", fontSize: "12px", lineHeight: 1.5 }}>{errorText}</div>
+              )}
+
               <button
                 type="submit"
+                disabled={state === "sending"}
                 style={{
                   background: "#111111",
                   color: "#FFFFFF",
@@ -185,14 +209,19 @@ export default function ContactModal({ open, onClose, subject }: ContactModalPro
                   fontSize: "11px",
                   letterSpacing: "0.18em",
                   textTransform: "uppercase",
-                  cursor: "pointer",
-                  transition: "background 0.2s",
+                  cursor: state === "sending" ? "wait" : "pointer",
+                  transition: "background 0.2s, opacity 0.2s",
                   alignSelf: "flex-start",
+                  opacity: state === "sending" ? 0.6 : 1,
                 }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#333333")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#111111")}
+                onMouseEnter={(e) => {
+                  if (state !== "sending") (e.currentTarget as HTMLButtonElement).style.background = "#333333";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = "#111111";
+                }}
               >
-                ОТПРАВИТЬ
+                {state === "sending" ? "ОТПРАВКА..." : "ОТПРАВИТЬ"}
               </button>
             </form>
           </>

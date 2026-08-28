@@ -3,15 +3,12 @@ import { useNavigate } from "react-router";
 import Header from "../components/Header";
 import ContactModal from "../components/ContactModal";
 import { inventory, type JetSki } from "../data/inventory";
-import { api } from "../api";
-
-const HERO_IMG =
-  "https://images.unsplash.com/photo-1649291390039-3d5640328a5a?w=2400&h=1400&fit=crop&auto=format";
-const HERO_VIDEO = "/uploads/e40bf07571c426c3e2f297fc00cea830.mp4";
+import { api, DEFAULT_SETTINGS, type SiteSettings } from "../api";
 
 export default function Home() {
   const [contactOpen, setContactOpen] = useState(false);
   const [items, setItems] = useState<JetSki[]>(inventory);
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,6 +21,14 @@ export default function Home() {
       .catch(() => {
         /* fallback to built-in data */
       });
+    api
+      .getSettings()
+      .then((s) => {
+        if (alive && s) setSettings({ ...DEFAULT_SETTINGS, ...s });
+      })
+      .catch(() => {
+        /* keep defaults */
+      });
     return () => {
       alive = false;
     };
@@ -31,7 +36,12 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#F4F2EE" }}>
-      <Header onContact={() => setContactOpen(true)} />
+      <Header
+        onContact={() => setContactOpen(true)}
+        brandName={settings.brandName}
+        brandSub={settings.brandSub}
+        contactLabel={settings.contactLabel}
+      />
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
 
       {/* HERO */}
@@ -43,14 +53,16 @@ export default function Home() {
           background: "#111111",
         }}
       >
-        {/* Hero 背景视频（替代静态图；poster 为原图，加载/暂停时显示） */}
+        {/* Hero 背景视频（poster 为图片，加载/暂停时显示） */}
         <video
-          src={HERO_VIDEO}
-          poster={HERO_IMG}
+          key={settings.heroVideo}
+          src={settings.heroVideo}
+          poster={settings.heroImage}
           autoPlay
           muted
           loop
           playsInline
+          preload="metadata"
           style={{
             position: "absolute",
             inset: 0,
@@ -58,7 +70,7 @@ export default function Home() {
             height: "100%",
             objectFit: "cover",
             objectPosition: "center 40%",
-            opacity: 0.55,
+            opacity: Number(settings.heroOpacity) || 0.55,
           }}
         />
         {/* Cinematic vignette */}
@@ -107,7 +119,7 @@ export default function Home() {
                   marginBottom: "8px",
                 }}
               >
-                ТЕКУЩИЙ СКЛАД
+                {settings.sectionLabel}
               </span>
               <h2
                 style={{
@@ -118,7 +130,7 @@ export default function Home() {
                   letterSpacing: "-0.02em",
                 }}
               >
-                В НАЛИЧИИ И НЕДАВНО ПРОДАННОЕ
+                {settings.sectionTitle}
               </h2>
             </div>
             <div
@@ -128,7 +140,7 @@ export default function Home() {
                 letterSpacing: "0.04em",
               }}
             >
-              {items.filter((i) => i.status === "available").length} доступно
+              {items.filter((i) => i.status === "available").length} {settings.availableLabel}
             </div>
           </div>
 
@@ -145,6 +157,7 @@ export default function Home() {
                 key={item.slug}
                 item={item}
                 onClick={() => navigate(`/inventory/${item.slug}`)}
+                labels={{ soldLabel: settings.soldLabel, inStockLabel: settings.inStockLabel }}
               />
             ))}
           </div>
@@ -186,7 +199,7 @@ export default function Home() {
                   textTransform: "uppercase",
                 }}
               >
-                SEA-DOO PREMIUM USED
+                {settings.footerBrand}
               </div>
               <div
                 style={{
@@ -196,13 +209,30 @@ export default function Home() {
                   lineHeight: 1.7,
                 }}
               >
-                Премиальный шоурум б/у гидроциклов
+                {settings.footerSlogan}
               </div>
+              {(settings.phone || settings.email || settings.address) && (
+                <div
+                  style={{
+                    marginTop: "16px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px",
+                    fontSize: "12px",
+                    color: "rgba(255,255,255,0.65)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {settings.phone && <span>{settings.phone}</span>}
+                  {settings.email && <span>{settings.email}</span>}
+                  {settings.address && <span>{settings.address}</span>}
+                </div>
+              )}
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-end" }}>
               <button
-                onClick={() => {}}
+                onClick={() => setContactOpen(true)}
                 style={{
                   background: "none",
                   border: "1px solid rgba(255,255,255,0.25)",
@@ -216,7 +246,7 @@ export default function Home() {
                   transition: "border-color 0.2s, color 0.2s",
                 }}
               >
-                СВЯЗАТЬСЯ
+                {settings.contactLabel}
               </button>
             </div>
           </div>
@@ -233,10 +263,10 @@ export default function Home() {
             }}
           >
             <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
-              © 2025 SEA-DOO PREMIUM USED. Все права защищены.
+              {settings.copyrightText}
             </span>
             <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)" }}>
-              Гидроциклы · Москва и регионы
+              {settings.cityText}
             </span>
           </div>
         </div>
@@ -248,9 +278,11 @@ export default function Home() {
 function InventoryCard({
   item,
   onClick,
+  labels,
 }: {
   item: JetSki;
   onClick: () => void;
+  labels: { soldLabel: string; inStockLabel: string };
 }) {
   const [hovered, setHovered] = useState(false);
   const sold = item.status === "sold";
@@ -283,6 +315,7 @@ function InventoryCard({
         <img
           src={item.heroImage}
           alt={item.model}
+          loading="lazy"
           style={{
             position: "absolute",
             inset: 0,
@@ -316,7 +349,7 @@ function InventoryCard({
                 padding: "5px 10px",
               }}
             >
-              ПРОДАНО
+              {labels.soldLabel}
             </span>
           ) : (
             <span
@@ -331,7 +364,7 @@ function InventoryCard({
                 padding: "5px 10px",
               }}
             >
-              В НАЛИЧИИ
+              {labels.inStockLabel}
             </span>
           )}
         </div>

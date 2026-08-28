@@ -3,9 +3,18 @@ import { useEffect, useState } from "react";
 interface HeaderProps {
   onContact: () => void;
   forceLight?: boolean;
+  brandName?: string;
+  brandSub?: string;
+  contactLabel?: string;
 }
 
-export default function Header({ onContact, forceLight = false }: HeaderProps) {
+export default function Header({
+  onContact,
+  forceLight = false,
+  brandName = "SEA-DOO",
+  brandSub = "PREMIUM USED",
+  contactLabel = "СВЯЗАТЬСЯ",
+}: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -63,7 +72,7 @@ export default function Header({ onContact, forceLight = false }: HeaderProps) {
               textTransform: "uppercase",
             }}
           >
-            SEA-DOO
+            {brandName}
           </span>
           <span
             style={{
@@ -75,7 +84,7 @@ export default function Header({ onContact, forceLight = false }: HeaderProps) {
               lineHeight: 1,
             }}
           >
-            PREMIUM USED
+            {brandSub}
           </span>
         </a>
 
@@ -103,7 +112,7 @@ export default function Header({ onContact, forceLight = false }: HeaderProps) {
             (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.55)";
           }}
         >
-          СВЯЗАТЬСЯ
+          {contactLabel}
         </button>
       </div>
     </header>

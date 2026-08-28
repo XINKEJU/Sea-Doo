@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import type { JetSki } from "../data/inventory";
-import { api } from "../api";
+import { api, DEFAULT_SETTINGS, type Lead, type SiteSettings } from "../api";
 
 const TOKEN_KEY = "seadoo_admin_token";
+
+type Tab = "products" | "leads" | "settings";
 
 type FormState = {
   model: string;
@@ -83,8 +85,14 @@ function fromForm(f: FormState): Partial<JetSki> {
 export default function Admin() {
   const navigate = useNavigate();
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
-  const [view, setView] = useState<"list" | "edit">("list");
+  const [tab, setTab] = useState<Tab>("products");
   const [editing, setEditing] = useState<JetSki | null>(null);
+
+  const logout = async () => {
+    await api.logout().catch(() => {});
+    localStorage.removeItem(TOKEN_KEY);
+    setToken(null);
+  };
 
   if (!token) {
     return (
@@ -97,34 +105,78 @@ export default function Admin() {
     );
   }
 
-  if (view === "edit") {
+  if (editing) {
     return (
       <Editor
         product={editing}
-        onSaved={() => {
-          setView("list");
-        }}
-        onCancel={() => setView("list")}
+        onSaved={() => setEditing(null)}
+        onCancel={() => setEditing(null)}
       />
     );
   }
 
   return (
-    <List
-      onLogout={() => {
-        localStorage.removeItem(TOKEN_KEY);
-        setToken(null);
-      }}
-      onNew={() => {
-        setEditing(null);
-        setView("edit");
-      }}
-      onEdit={(p) => {
-        setEditing(p);
-        setView("edit");
-      }}
-      onBack={() => navigate("/")}
-    />
+    <div style={{ minHeight: "100vh", background: "#F4F2EE" }}>
+      <header style={{ background: "#111111", padding: "28px 40px" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+          <div>
+            <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginBottom: "6px" }}>
+              SEA-DOO · АДМИН
+            </div>
+            <h1 style={{ fontSize: "26px", fontWeight: 800, color: "#FFFFFF", margin: 0, letterSpacing: "-0.01em" }}>
+              管理后台
+            </h1>
+          </div>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button onClick={() => navigate("/")} style={btnGhostLight}>← 网站</button>
+            <button onClick={logout} style={btnGhostLight}>退出</button>
+          </div>
+        </div>
+      </header>
+
+      <TabBar tab={tab} onChange={setTab} />
+
+      <main style={{ maxWidth: "1200px", margin: "0 auto", padding: "32px 40px 64px" }}>
+        {tab === "products" && <ProductsTab onEdit={(p) => setEditing(p)} onNew={() => setEditing(null)} />}
+        {tab === "leads" && <LeadsTab />}
+        {tab === "settings" && <SettingsTab />}
+      </main>
+    </div>
+  );
+}
+
+function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "products", label: "商品" },
+    { key: "leads", label: "询盘" },
+    { key: "settings", label: "站点设置" },
+  ];
+  return (
+    <div style={{ background: "#FFFFFF", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 40px", display: "flex", gap: "4px" }}>
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => onChange(t.key)}
+            style={{
+              background: "none",
+              border: "none",
+              borderBottom: tab === t.key ? "3px solid #111111" : "3px solid transparent",
+              padding: "16px 22px",
+              fontFamily: "inherit",
+              fontSize: "12px",
+              fontWeight: tab === t.key ? 700 : 500,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: tab === t.key ? "#111111" : "#999999",
+              cursor: "pointer",
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -184,11 +236,9 @@ function Login({ onSuccess }: { onSuccess: (token: string) => void }) {
 }
 
 /* ================================================================
- * List
+ * Products tab
  * ================================================================ */
-function List({
-  onNew, onEdit, onLogout, onBack,
-}: { onNew: () => void; onEdit: (p: JetSki) => void; onLogout: () => void; onBack: () => void }) {
+function ProductsTab({ onNew, onEdit }: { onNew: () => void; onEdit: (p: JetSki) => void }) {
   const [products, setProducts] = useState<JetSki[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -211,72 +261,317 @@ function List({
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F2EE" }}>
-      <header style={{ background: "#111111", padding: "32px 40px" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
-          <div>
-            <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginBottom: "6px" }}>
-              SEA-DOO · АДМИН
-            </div>
-            <h1 style={{ fontSize: "26px", fontWeight: 800, color: "#FFFFFF", margin: 0, letterSpacing: "-0.01em" }}>
-              商品管理
-            </h1>
-          </div>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button onClick={onBack} style={btnGhostLight}>← 网站</button>
-            <button onClick={onNew} style={btnLight}>+ 新建商品</button>
-            <button onClick={onLogout} style={btnGhostLight}>退出</button>
-          </div>
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <div style={{ fontSize: "13px", color: "#666666" }}>{products.length} 件商品</div>
+        <button onClick={onNew} style={btnDark}>+ 新建商品</button>
+      </div>
+
+      {loading && <div style={{ color: "#666666", fontSize: "13px" }}>Загрузка...</div>}
+      {error && <div style={{ color: "#B00020", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
+
+      {!loading && products.length === 0 && (
+        <div style={{ background: "#FFFFFF", padding: "64px 40px", textAlign: "center", color: "#666666", fontSize: "13px" }}>
+          目录为空。点击「+ 新建商品」添加第一件商品。
         </div>
-      </header>
+      )}
 
-      <main style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px" }}>
-        {loading && <div style={{ color: "#666666", fontSize: "13px" }}>Загрузка...</div>}
-        {error && <div style={{ color: "#B00020", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
-
-        {!loading && products.length === 0 && (
-          <div style={{ background: "#FFFFFF", padding: "64px 40px", textAlign: "center", color: "#666666", fontSize: "13px" }}>
-            目录为空。点击「+ 新建商品」添加第一件商品。
-          </div>
-        )}
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {products.map((p) => (
-            <div
-              key={p.slug}
-              style={{ background: "#FFFFFF", display: "flex", alignItems: "center", gap: "20px", padding: "14px 20px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}
-            >
-              <img
-                src={p.heroImage}
-                alt={p.model}
-                style={{ width: "88px", height: "60px", objectFit: "cover", background: "#E8E6E2", flex: "0 0 auto" }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "14px", fontWeight: 700, color: "#111111", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.model}</div>
-                <div style={{ fontSize: "11px", color: "#666666", marginTop: "4px" }}>
-                  {p.year} · {p.hours} моточ. · {p.hp} л.с. · {p.images.length} фото
-                </div>
-              </div>
-              <div style={{ textAlign: "right", flex: "0 0 auto" }}>
-                <div style={{ fontSize: "15px", fontWeight: 700, color: p.status === "sold" ? "#999999" : "#111111" }}>{p.price}</div>
-                <span style={{ fontSize: "9px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: p.status === "sold" ? "#999999" : "#0A7A33" }}>
-                  {p.status === "sold" ? "ПРОДАНО" : "В НАЛИЧИИ"}
-                </span>
-              </div>
-              <div style={{ display: "flex", gap: "8px", flex: "0 0 auto" }}>
-                <button onClick={() => onEdit(p)} style={btnDark}>编辑</button>
-                <button onClick={() => remove(p)} style={btnDanger}>删除</button>
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        {products.map((p) => (
+          <div
+            key={p.slug}
+            style={{ background: "#FFFFFF", display: "flex", alignItems: "center", gap: "20px", padding: "14px 20px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}
+          >
+            <img
+              src={p.heroImage}
+              alt={p.model}
+              style={{ width: "88px", height: "60px", objectFit: "cover", background: "#E8E6E2", flex: "0 0 auto" }}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "14px", fontWeight: 700, color: "#111111", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.model}</div>
+              <div style={{ fontSize: "11px", color: "#666666", marginTop: "4px" }}>
+                {p.year} · {p.hours} моточ. · {p.hp} л.с. · {p.images.length} фото
               </div>
             </div>
-          ))}
-        </div>
-      </main>
-    </div>
+            <div style={{ textAlign: "right", flex: "0 0 auto" }}>
+              <div style={{ fontSize: "15px", fontWeight: 700, color: p.status === "sold" ? "#999999" : "#111111" }}>{p.price}</div>
+              <span style={{ fontSize: "9px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: p.status === "sold" ? "#999999" : "#0A7A33" }}>
+                {p.status === "sold" ? "ПРОДАНО" : "В НАЛИЧИИ"}
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: "8px", flex: "0 0 auto" }}>
+              <button onClick={() => onEdit(p)} style={btnDark}>编辑</button>
+              <button onClick={() => remove(p)} style={btnDanger}>删除</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
 /* ================================================================
- * Editor
+ * Leads tab
+ * ================================================================ */
+function LeadsTab() {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const refresh = () => {
+    setLoading(true);
+    setError("");
+    api.getLeads().then(setLeads).catch((e) => setError((e as Error).message)).finally(() => setLoading(false));
+  };
+  useEffect(refresh, []);
+
+  const markRead = async (l: Lead) => {
+    if (l.status === "read") return;
+    try {
+      await api.updateLead(l.id, { status: "read" });
+      refresh();
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  };
+
+  const remove = async (l: Lead) => {
+    if (!window.confirm(`Удалить заявку от ${l.name || l.phone}?`)) return;
+    try {
+      await api.deleteLead(l.id);
+      refresh();
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  };
+
+  const newCount = leads.filter((l) => l.status === "new").length;
+
+  return (
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <div style={{ fontSize: "13px", color: "#666666" }}>
+          共 {leads.length} 条询盘{newCount > 0 ? ` · ${newCount} 条未读` : ""}
+        </div>
+      </div>
+
+      {loading && <div style={{ color: "#666666", fontSize: "13px" }}>Загрузка...</div>}
+      {error && <div style={{ color: "#B00020", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
+
+      {!loading && leads.length === 0 && (
+        <div style={{ background: "#FFFFFF", padding: "64px 40px", textAlign: "center", color: "#666666", fontSize: "13px" }}>
+          暂无询盘。访客提交联系表单后会显示在这里。
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        {leads.map((l) => (
+          <div
+            key={l.id}
+            style={{
+              background: "#FFFFFF",
+              padding: "20px 24px",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+              borderLeft: l.status === "new" ? "3px solid #111111" : "3px solid transparent",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: "#111111" }}>{l.name || "—"}</span>
+                  {l.status === "new" && (
+                    <span style={{ background: "#111111", color: "#FFFFFF", fontSize: "9px", letterSpacing: "0.1em", padding: "3px 8px", textTransform: "uppercase" }}>NEW</span>
+                  )}
+                </div>
+                <div style={{ fontSize: "12px", color: "#666666", marginTop: "6px", lineHeight: 1.6 }}>
+                  {l.phone && <div>📞 {l.phone}</div>}
+                  {l.subject && <div style={{ color: "#111111", marginTop: "2px" }}>{l.subject}</div>}
+                </div>
+                {l.message && (
+                  <div style={{ marginTop: "10px", fontSize: "13px", color: "#333333", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{l.message}</div>
+                )}
+                <div style={{ marginTop: "10px", fontSize: "11px", color: "#999999" }}>
+                  {new Date(l.createdAt).toLocaleString("ru-RU")}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "8px", flex: "0 0 auto" }}>
+                {l.status === "new" && (
+                  <button onClick={() => markRead(l)} style={btnDark}>标记已读</button>
+                )}
+                <button onClick={() => remove(l)} style={btnDanger}>删除</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/* ================================================================
+ * Settings tab
+ * ================================================================ */
+function SettingsTab() {
+  const [form, setForm] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const videoRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    api.getAdminSettings()
+      .then((s) => setForm({ ...DEFAULT_SETTINGS, ...s }))
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const set = <K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  const save = async () => {
+    setBusy(true);
+    setError("");
+    setSaved(false);
+    try {
+      await api.updateSettings(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const uploadVideo = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setError("");
+    try {
+      const urls = await api.upload(Array.from(files));
+      if (urls.length > 0) set("heroVideo", urls[0]);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading(false);
+      if (videoRef.current) videoRef.current.value = "";
+    }
+  };
+
+  if (loading) return <div style={{ color: "#666666", fontSize: "13px" }}>Загрузка...</div>;
+
+  return (
+    <>
+      {error && <div style={{ background: "#FDEBEC", color: "#B00020", padding: "12px 16px", marginBottom: "20px", fontSize: "13px" }}>{error}</div>}
+      {saved && (
+        <div style={{ background: "#E8F5EC", color: "#0A7A33", padding: "12px 16px", marginBottom: "20px", fontSize: "13px" }}>
+          已保存，网站已生效 ✓
+        </div>
+      )}
+
+      <Section title="品牌">
+        <Grid>
+          <Field label="Header 品牌名">
+            <input value={form.brandName} onChange={(e) => set("brandName", e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="Header 副标题">
+            <input value={form.brandSub} onChange={(e) => set("brandSub", e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="页脚品牌名">
+            <input value={form.footerBrand} onChange={(e) => set("footerBrand", e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="页脚标语">
+            <input value={form.footerSlogan} onChange={(e) => set("footerSlogan", e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="联系按钮文案">
+            <input value={form.contactLabel} onChange={(e) => set("contactLabel", e.target.value)} style={inputStyle} />
+          </Field>
+        </Grid>
+      </Section>
+
+      <Section title="联系信息（页脚显示）">
+        <Grid>
+          <Field label="电话">
+            <input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+7 (900) 000-00-00" style={inputStyle} />
+          </Field>
+          <Field label="邮箱">
+            <input value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="sales@example.ru" style={inputStyle} />
+          </Field>
+          <Field label="地址">
+            <input value={form.address} onChange={(e) => set("address", e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="城市/区域文字">
+            <input value={form.cityText} onChange={(e) => set("cityText", e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="版权文字">
+            <input value={form.copyrightText} onChange={(e) => set("copyrightText", e.target.value)} style={inputStyle} />
+          </Field>
+        </Grid>
+      </Section>
+
+      <Section title="首页 Hero">
+        <Field label="背景视频 URL（或上传 mp4/webm）">
+          <div style={{ display: "flex", gap: "10px" }}>
+            <input value={form.heroVideo} onChange={(e) => set("heroVideo", e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+            <label style={{ ...btnDark, display: "flex", alignItems: "center", cursor: "pointer" }}>
+              {uploading ? "上传中..." : "上传视频"}
+              <input ref={videoRef} type="file" accept="video/mp4,video/webm" onChange={(e) => uploadVideo(e.target.files)} style={{ display: "none" }} />
+            </label>
+          </div>
+        </Field>
+        <Field label="封面图 URL（视频加载/暂停时显示）">
+          <input value={form.heroImage} onChange={(e) => set("heroImage", e.target.value)} style={inputStyle} />
+        </Field>
+        <Grid>
+          <Field label="视频透明度（0.3–0.8）">
+            <input type="number" step="0.05" min="0.2" max="0.9" value={form.heroOpacity} onChange={(e) => set("heroOpacity", e.target.value)} style={inputStyle} />
+          </Field>
+        </Grid>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "12px" }}>
+          <div style={{ width: "240px", aspectRatio: "16/7", background: "#111111", overflow: "hidden" }}>
+            {form.heroImage ? (
+              <img src={form.heroImage} alt="hero preview" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: Number(form.heroOpacity) || 0.55 }} />
+            ) : null}
+          </div>
+          <div style={{ fontSize: "12px", color: "#999999", lineHeight: 1.6 }}>
+            视频/封面图预览。上传的视频会存到 /uploads/ 并自动填入 URL。
+          </div>
+        </div>
+      </Section>
+
+      <Section title="库存区文案">
+        <Grid>
+          <Field label="区块小标题">
+            <input value={form.sectionLabel} onChange={(e) => set("sectionLabel", e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="区块大标题">
+            <input value={form.sectionTitle} onChange={(e) => set("sectionTitle", e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="在售计数文字">
+            <input value={form.availableLabel} onChange={(e) => set("availableLabel", e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="已售徽章">
+            <input value={form.soldLabel} onChange={(e) => set("soldLabel", e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="在售徽章">
+            <input value={form.inStockLabel} onChange={(e) => set("inStockLabel", e.target.value)} style={inputStyle} />
+          </Field>
+        </Grid>
+      </Section>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <button onClick={save} disabled={busy} style={{ ...btnDark, padding: "14px 40px", opacity: busy ? 0.6 : 1 }}>
+          {busy ? "СОХРАНЕНИЕ..." : "保存设置"}
+        </button>
+        <span style={{ fontSize: "12px", color: "#999999" }}>保存后前台立即生效（首次进入网站时自动刷新）。</span>
+      </div>
+    </>
+  );
+}
+
+/* ================================================================
+ * Editor (product)
  * ================================================================ */
 function Editor({
   product, onSaved, onCancel,
