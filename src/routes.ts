@@ -1,7 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import Home from "./pages/Home";
 import ProductDetail from "./pages/ProductDetail";
-import Admin from "./pages/Admin";
+import AdminRoute from "./pages/AdminRoute";
 
 export const router = createBrowserRouter([
   {
@@ -14,6 +14,6 @@ export const router = createBrowserRouter([
   },
   {
     path: "/admin",
-    Component: Admin,
+    Component: AdminRoute,
   },
 ]);

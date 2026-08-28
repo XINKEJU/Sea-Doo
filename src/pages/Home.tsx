@@ -9,6 +9,8 @@ export default function Home() {
   const [contactOpen, setContactOpen] = useState(false);
   const [items, setItems] = useState<JetSki[]>(inventory);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  const [loading, setLoading] = useState(true);
+  const [videoOk, setVideoOk] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,6 +22,9 @@ export default function Home() {
       })
       .catch(() => {
         /* fallback to built-in data */
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
       });
     api
       .getSettings()
@@ -53,26 +58,43 @@ export default function Home() {
           background: "#111111",
         }}
       >
-        {/* Hero 背景视频（poster 为图片，加载/暂停时显示） */}
-        <video
-          key={settings.heroVideo}
-          src={settings.heroVideo}
-          poster={settings.heroImage}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "center 40%",
-            opacity: Number(settings.heroOpacity) || 0.55,
-          }}
-        />
+        {/* Hero 背景视频（poster 为图片；视频加载失败自动回退为静态图） */}
+        {videoOk ? (
+          <video
+            key={settings.heroVideo}
+            src={settings.heroVideo}
+            poster={settings.heroImage}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            onError={() => setVideoOk(false)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center 40%",
+              opacity: Number(settings.heroOpacity) || 0.55,
+            }}
+          />
+        ) : (
+          <img
+            src={settings.heroImage}
+            alt="SEA-DOO гидроцикл в движении"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center 40%",
+              opacity: Number(settings.heroOpacity) || 0.55,
+            }}
+          />
+        )}
         {/* Cinematic vignette */}
         <div
           style={{
@@ -144,23 +166,27 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Grid */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
-              gap: "2px",
-            }}
-          >
-            {items.map((item) => (
-              <InventoryCard
-                key={item.slug}
-                item={item}
-                onClick={() => navigate(`/inventory/${item.slug}`)}
-                labels={{ soldLabel: settings.soldLabel, inStockLabel: settings.inStockLabel }}
-              />
-            ))}
-          </div>
+          {/* Grid（加载中显示骨架屏） */}
+          {loading ? (
+            <SkeletonGrid />
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
+                gap: "2px",
+              }}
+            >
+              {items.map((item) => (
+                <InventoryCard
+                  key={item.slug}
+                  item={item}
+                  onClick={() => navigate(`/inventory/${item.slug}`)}
+                  labels={{ soldLabel: settings.soldLabel, inStockLabel: settings.inStockLabel }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -275,6 +301,34 @@ export default function Home() {
   );
 }
 
+function SkeletonGrid() {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
+        gap: "2px",
+      }}
+    >
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div
+          key={i}
+          style={{ background: "#FFFFFF", overflow: "hidden", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}
+        >
+          <div style={{ paddingTop: "75%", background: "#E8E6E2" }} />
+          <div style={{ padding: "20px 24px 24px" }}>
+            <div style={{ height: 14, background: "#E8E6E2", marginBottom: 10, width: "62%" }} />
+            <div style={{ height: 10, background: "#E8E6E2", marginBottom: 18, width: "42%" }} />
+            <div style={{ borderTop: "1px solid rgba(0,0,0,0.08)", paddingTop: 14 }}>
+              <div style={{ height: 14, background: "#E8E6E2", width: "32%" }} />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function InventoryCard({
   item,
   onClick,
@@ -316,6 +370,7 @@ function InventoryCard({
           src={item.heroImage}
           alt={item.model}
           loading="lazy"
+          onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
           style={{
             position: "absolute",
             inset: 0,

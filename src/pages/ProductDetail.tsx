@@ -162,6 +162,7 @@ export default function ProductDetail() {
             <img
               src={item.images[activeImg]}
               alt={`${item.model} — фото ${activeImg + 1}`}
+              onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
               style={{
                 width: "100%",
                 height: "100%",
@@ -230,6 +231,7 @@ export default function ProductDetail() {
                   src={img}
                   alt={`Миниатюра ${idx + 1}`}
                   loading="lazy"
+                  onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
                   style={{
                     width: "100%",
                     height: "100%",
@@ -374,6 +376,7 @@ export default function ProductDetail() {
                       src={img}
                       alt={`${item.model} — детальное фото ${idx + 1}`}
                       loading="lazy"
+                      onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
                       style={{
                         width: "100%",
                         height: "100%",
