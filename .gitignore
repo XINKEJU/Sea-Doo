@@ -18,3 +18,10 @@ logs/
 # beside it.
 /.plugins/
 /.opencode-skills/
+
+# WorkBuddy 内部状态（工作日志等）。部署脚本在 deploy/ 目录受版本控制。
+/.workbuddy/
+
+# Python
+__pycache__/
+*.pyc
