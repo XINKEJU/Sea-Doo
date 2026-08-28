@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import Header from "../components/Header";
 import ContactModal from "../components/ContactModal";
-import { inventory } from "../data/inventory";
+import { inventory, type JetSki } from "../data/inventory";
+import { api } from "../api";
 
 const SPEC_LABELS: Record<string, string> = {
   year: "ГОД",
@@ -20,8 +21,26 @@ export default function ProductDetail() {
   const navigate = useNavigate();
   const [contactOpen, setContactOpen] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
+  const [item, setItem] = useState<JetSki | undefined>(() =>
+    inventory.find((i) => i.slug === slug)
+  );
 
-  const item = inventory.find((i) => i.slug === slug);
+  useEffect(() => {
+    if (!slug) return;
+    let alive = true;
+    api
+      .listProducts()
+      .then((list) => {
+        const found = list.find((i) => i.slug === slug);
+        if (alive && found) setItem(found);
+      })
+      .catch(() => {
+        /* fallback to built-in data */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [slug]);
 
   if (!item) {
     return (

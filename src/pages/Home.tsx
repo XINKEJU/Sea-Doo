@@ -1,15 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import Header from "../components/Header";
 import ContactModal from "../components/ContactModal";
-import { inventory } from "../data/inventory";
+import { inventory, type JetSki } from "../data/inventory";
+import { api } from "../api";
 
 const HERO_IMG =
   "https://images.unsplash.com/photo-1649291390039-3d5640328a5a?w=2400&h=1400&fit=crop&auto=format";
+const HERO_VIDEO = "/uploads/e40bf07571c426c3e2f297fc00cea830.mp4";
 
 export default function Home() {
   const [contactOpen, setContactOpen] = useState(false);
+  const [items, setItems] = useState<JetSki[]>(inventory);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let alive = true;
+    api
+      .listProducts()
+      .then((list) => {
+        if (alive && Array.isArray(list) && list.length > 0) setItems(list);
+      })
+      .catch(() => {
+        /* fallback to built-in data */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <div style={{ minHeight: "100vh", background: "#F4F2EE" }}>
@@ -25,9 +43,14 @@ export default function Home() {
           background: "#111111",
         }}
       >
-        <img
-          src={HERO_IMG}
-          alt="SEA-DOO гидроцикл в движении"
+        {/* Hero 背景视频（替代静态图；poster 为原图，加载/暂停时显示） */}
+        <video
+          src={HERO_VIDEO}
+          poster={HERO_IMG}
+          autoPlay
+          muted
+          loop
+          playsInline
           style={{
             position: "absolute",
             inset: 0,
@@ -105,7 +128,7 @@ export default function Home() {
                 letterSpacing: "0.04em",
               }}
             >
-              {inventory.filter((i) => i.status === "available").length} доступно
+              {items.filter((i) => i.status === "available").length} доступно
             </div>
           </div>
 
@@ -117,7 +140,7 @@ export default function Home() {
               gap: "2px",
             }}
           >
-            {inventory.map((item) => (
+            {items.map((item) => (
               <InventoryCard
                 key={item.slug}
                 item={item}
@@ -226,7 +249,7 @@ function InventoryCard({
   item,
   onClick,
 }: {
-  item: (typeof inventory)[0];
+  item: JetSki;
   onClick: () => void;
 }) {
   const [hovered, setHovered] = useState(false);

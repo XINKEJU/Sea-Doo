@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import Home from "./pages/Home";
 import ProductDetail from "./pages/ProductDetail";
+import Admin from "./pages/Admin";
 
 export const router = createBrowserRouter([
   {
@@ -10,5 +11,9 @@ export const router = createBrowserRouter([
   {
     path: "/inventory/:slug",
     Component: ProductDetail,
+  },
+  {
+    path: "/admin",
+    Component: Admin,
   },
 ]);
