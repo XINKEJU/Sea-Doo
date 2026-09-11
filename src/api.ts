@@ -159,6 +159,15 @@ export const api = {
     await req(`${BASE}/admin/logout`, { method: "POST" }).catch(() => {});
   },
   // ---- admin products ----
+  /**
+   * 后台专用商品列表：直连 /api/admin/products，不走 60s 缓存。
+   * 读取结果同步写入前台缓存，保证前后台数据一致。
+   */
+  async listAdminProducts(): Promise<JetSki[]> {
+    const data = await j<JetSki[]>(await req(`${BASE}/admin/products`));
+    productsCache = { data, ts: Date.now() };
+    return data;
+  },
   async createProduct(p: Partial<JetSki>): Promise<JetSki> {
     const created = await j<JetSki>(
       await req(`${BASE}/admin/products`, {

@@ -5,6 +5,7 @@
 //             GET  /api/settings, POST /api/leads
 // Админ:      POST /api/admin/login (set httpOnly cookie), POST /api/admin/logout
 //             GET /api/admin/me (check session)
+//             GET /api/admin/products (后台实时列表，无缓存)
 //             GET/POST/PUT/DELETE /api/admin/products[/:slug]
 //             GET /api/admin/leads, PUT/DELETE /api/admin/leads/:id
 //             GET/PUT /api/admin/settings
@@ -140,10 +141,14 @@ function sweepMaps() {
 setInterval(sweepMaps, 10 * 60 * 1000).unref();
 
 // ---------- CSRF: проверка Origin для записей ----------
-const ALLOWED_ORIGINS = new Set([
-  'https://seadoo.aaatslydaaa.ru',
-  'http://seadoo.aaatslydaaa.ru',
-]);
+// 可通过环境变量 ALLOWED_ORIGINS 扩展（逗号分隔），便于本地/预发域名调试后台
+const ALLOWED_ORIGINS = new Set(
+  (process.env.ALLOWED_ORIGINS ||
+    'https://seadoo.aaatslydaaa.ru,http://seadoo.aaatslydaaa.ru')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+);
 
 // ---------- Upload ----------
 const storage = multer.diskStorage({
@@ -254,6 +259,9 @@ app.post('/api/admin/login', (req, res) => {
 app.use('/api/admin', requireAuth);
 
 app.get('/api/admin/me', (req, res) => res.json({ ok: true }));
+
+// 后台商品列表：直读存储（含全部字段），不经过前台的任何缓存
+app.get('/api/admin/products', (_req, res) => res.json(store.getProducts()));
 
 app.post('/api/admin/logout', (req, res) => {
   if (req.token) revokeToken(req.token);

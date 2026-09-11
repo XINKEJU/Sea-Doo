@@ -5,6 +5,13 @@ import { api, DEFAULT_SETTINGS, type Lead, type SiteSettings } from "../api";
 
 type Tab = "products" | "leads" | "settings";
 
+/**
+ * 编辑器状态。
+ * 注意：不能用 `JetSki | null` 同时表达「关闭」和「新建」——两者都是 null，
+ * 会导致「+ 新建商品」点击后 setEditing(null) 成为 no-op，编辑器永不渲染。
+ */
+type EditorState = { mode: "new" } | { mode: "edit"; product: JetSki } | null;
+
 type FormState = {
   model: string;
   year: string;
@@ -89,7 +96,7 @@ export default function Admin() {
   // null = 校验会话中；会话存 httpOnly cookie，前端无法读取，统一由 /me 判定
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [tab, setTab] = useState<Tab>("products");
-  const [editing, setEditing] = useState<JetSki | null>(null);
+  const [editor, setEditor] = useState<EditorState>(null);
 
   useEffect(() => {
     api.me().then(setAuthed);
@@ -112,12 +119,15 @@ export default function Admin() {
     return <Login onSuccess={() => setAuthed(true)} />;
   }
 
-  if (editing) {
+  // key 保证「新建」与「编辑不同商品」之间切换时 Editor 重新挂载，表单不残留上次数据
+  if (editor) {
+    const key = editor.mode === "edit" ? `edit-${editor.product.slug}` : "new";
     return (
       <Editor
-        product={editing}
-        onSaved={() => setEditing(null)}
-        onCancel={() => setEditing(null)}
+        key={key}
+        product={editor.mode === "edit" ? editor.product : null}
+        onSaved={() => setEditor(null)}
+        onCancel={() => setEditor(null)}
       />
     );
   }
@@ -144,7 +154,12 @@ export default function Admin() {
       <TabBar tab={tab} onChange={setTab} />
 
       <main style={{ maxWidth: "1200px", margin: "0 auto", padding: "32px 40px 64px" }}>
-        {tab === "products" && <ProductsTab onEdit={(p) => setEditing(p)} onNew={() => setEditing(null)} />}
+        {tab === "products" && (
+          <ProductsTab
+            onNew={() => setEditor({ mode: "new" })}
+            onEdit={(p) => setEditor({ mode: "edit", product: p })}
+          />
+        )}
         {tab === "leads" && <LeadsTab />}
         {tab === "settings" && <SettingsTab />}
       </main>
@@ -242,6 +257,17 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+/** 老数据可能缺 images/heroImage，渲染前补齐，避免 undefined.length 崩溃 */
+function normalizeProduct(p: JetSki): JetSki {
+  return {
+    ...p,
+    slug: p.slug || "",
+    model: p.model || "—",
+    images: Array.isArray(p.images) ? p.images : [],
+    heroImage: p.heroImage || (Array.isArray(p.images) && p.images[0]) || "",
+  };
+}
+
 /* ================================================================
  * Products tab
  * ================================================================ */
@@ -251,10 +277,10 @@ function ProductsTab({ onNew, onEdit }: { onNew: () => void; onEdit: (p: JetSki)
   const [error, setError] = useState("");
 
   const refresh = useCallback(() => {
-    // loading 初始为 true；刷新只更新数据与错误，不重置 loading（避免删除后闪加载态）
+    // 后台走 /api/admin/products：绕过前台 60s 缓存，保证读到最新落库数据
     api
-      .listProducts()
-      .then(setProducts)
+      .listAdminProducts()
+      .then((list) => setProducts(list.map(normalizeProduct)))
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }, []);
@@ -289,16 +315,20 @@ function ProductsTab({ onNew, onEdit }: { onNew: () => void; onEdit: (p: JetSki)
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        {products.map((p) => (
+        {products.map((p, i) => (
           <div
-            key={p.slug}
+            key={`${p.slug || "item"}-${i}`}
             style={{ background: "#FFFFFF", display: "flex", alignItems: "center", gap: "20px", padding: "14px 20px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}
           >
-            <img
-              src={p.heroImage}
-              alt={p.model}
-              style={{ width: "88px", height: "60px", objectFit: "cover", background: "#E8E6E2", flex: "0 0 auto" }}
-            />
+            {p.heroImage ? (
+              <img
+                src={p.heroImage}
+                alt={p.model}
+                style={{ width: "88px", height: "60px", objectFit: "cover", background: "#E8E6E2", flex: "0 0 auto" }}
+              />
+            ) : (
+              <div style={{ width: "88px", height: "60px", background: "#E8E6E2", flex: "0 0 auto" }} />
+            )}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: "14px", fontWeight: 700, color: "#111111", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.model}</div>
               <div style={{ fontSize: "11px", color: "#666666", marginTop: "4px" }}>
