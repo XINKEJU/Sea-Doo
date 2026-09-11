@@ -10,6 +10,9 @@ Sea-Doo 部署工具（单一脚本，替代旧的 deploy_seadoo.py / deploy_sea
   SSHPASS='<服务器密码>' python deploy/deploy.py conf          # 仅应用 nginx seadoo.conf + reload
   SSHPASS='<服务器密码>' python deploy/deploy.py verify-https  # HTTPS 全链路验证
   SSHPASS='<服务器密码>' python deploy/deploy.py verify-site   # 站点 vhost/DNS 验证
+
+认证：优先使用 SSHPASS 密码登录；若未提供或密码被拒，自动回退到 SSH 密钥
+（默认 ~/.ssh/id_ed25519，可用 SSH_KEY 指定）。密钥对请用 `ssh root@170.168.89.127` 验证。
 """
 import argparse
 import os
@@ -31,18 +34,49 @@ EXCLUDE = {"node_modules", "data", "uploads", ".dockerignore"}
 # ================================================================
 # SSH 连接（带重试，服务器偶发 banner 超时）
 # ================================================================
+def _load_key(path):
+    """按密钥类型选择 paramiko 解析器（ed25519 / rsa / ecdsa）。"""
+    import paramiko as pm
+    for loader in (pm.Ed25519Key, pm.RSAKey, pm.ECDSAKey):
+        try:
+            return loader.from_private_key_file(path)
+        except Exception:
+            continue
+    return None
+
+
 def connect():
+    # 认证顺序：SSHPASS 密码 -> SSH 密钥（默认 ~/.ssh/id_ed25519，可用 SSH_KEY 覆盖）
     password = os.environ.get("SSHPASS")
-    assert password, "SSHPASS env var required"
-    c = None
+    key_path = os.environ.get("SSH_KEY") or os.path.expanduser("~/.ssh/id_ed25519")
+    pkey = _load_key(key_path) if os.path.exists(key_path) else None
+    assert password or pkey, "SSHPASS env var or a usable SSH key is required"
+
     for attempt in range(5):
         try:
             c = paramiko.SSHClient()
             c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            c.connect(HOST, 22, username="root", password=password, timeout=25, banner_timeout=40, look_for_keys=False, allow_agent=False)
+            # 没有 SSHPASS 时直接走密钥，否则 paramiko 会因无可用认证方式抛 SSHException
+            # 注意：不要传 look_for_keys=False / allow_agent=False —— paramiko 5.x 下
+            # 这两个参数同时为 False 会导致 pkey 认证被服务端拒绝（AuthenticationException）。
+            if password:
+                try:
+                    c.connect(HOST, 22, username="root", password=password,
+                              timeout=25, banner_timeout=40)
+                    return c
+                except Exception as e:
+                    if not pkey:
+                        raise
+                    print("password auth failed (%s), falling back to SSH key: %s"
+                          % (type(e).__name__, key_path))
+            c.connect(HOST, 22, username="root", pkey=pkey, timeout=25, banner_timeout=40)
             return c
         except Exception as e:
             print("connect attempt %d failed: %s" % (attempt + 1, type(e).__name__))
+            try:
+                c.close()
+            except Exception:
+                pass
             time.sleep(3)
     raise SystemExit("SSH connect failed")
 
@@ -79,6 +113,10 @@ def sftp_upload_dir(c, local, remote):
     def up(local_dir, remote_dir):
         mkdirs(remote_dir)
         for item in sorted(os.listdir(local_dir)):
+            # 顶层与嵌套的 node_modules/data/uploads 一律不上传（体积大且属运行期数据）
+            if item in EXCLUDE:
+                print("skipped ->", posixpath.join(remote_dir, item))
+                continue
             lp = os.path.join(local_dir, item)
             rp = posixpath.join(remote_dir, item)
             if os.path.isdir(lp):

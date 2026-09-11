@@ -32,6 +32,19 @@ export default defineConfig(({ mode }) => {
       port: parseInt(process.env.PORT || '8443'),
       strictPort: true,
       watch: { ignored: ['**/.figma/**'] },
+      // 本地开发/预览没有自带后端，把 /api 与 /uploads 代理到线上 CMS API。
+      // changeOrigin + 重写 Origin 是为了通过后端的 CSRF Origin 白名单校验。
+      proxy: {
+        '/api': {
+          target: 'https://seadoo.aaatslydaaa.ru',
+          changeOrigin: true,
+          headers: { Origin: 'https://seadoo.aaatslydaaa.ru' },
+        },
+        '/uploads': {
+          target: 'https://seadoo.aaatslydaaa.ru',
+          changeOrigin: true,
+        },
+      },
     },
     preview: {
       host: '0.0.0.0',

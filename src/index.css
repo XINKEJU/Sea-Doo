@@ -4,8 +4,18 @@
   box-sizing: border-box;
 }
 
+/* 重置 UA 默认样式：body 默认 8px 外边距会让页面四周露出 html 的白色底色，
+   在深色 Hero 上表现为一圈白边。同时给 html 上底色，避免橡皮筋滚动时露出白底。 */
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+}
+
 html {
   scroll-behavior: smooth;
+  background-color: #F4F2EE;
 }
 
 body {
@@ -14,6 +24,8 @@ body {
   color: #111111;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Hero 为全幅深色区块，禁止横向溢出产生白边 */
+  overflow-x: hidden;
 }
 
 /* Hide scrollbar by default, show on scroll */

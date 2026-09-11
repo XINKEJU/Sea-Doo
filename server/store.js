@@ -81,10 +81,20 @@ const FIELDS = [
   'heroImage', 'images',
 ];
 
+// 西里尔文 -> 拉丁音译。型号常含俄文，而 \w 不匹配西里尔字母，
+// 若直接过滤会让 slug 退化成 'model'，多条商品互相冲突。
+const TRANSLIT = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z',
+  и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r',
+  с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'c', ч: 'ch', ш: 'sh',
+  щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+};
+
 function slugify(text) {
-  return String(text)
+  return String(text == null ? '' : text)
     .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
+    .replace(/[а-яё]/g, (ch) => TRANSLIT[ch] ?? '')
+    .replace(/[^\w\s-]/g, '') // 中文等其余非 ASCII 字符移除
     .trim()
     .replace(/[\s_]+/g, '-')
     .replace(/-+/g, '-')
@@ -92,7 +102,8 @@ function slugify(text) {
 }
 
 function uniqueSlug(base) {
-  let s = slugify(base) || 'model';
+  // 纯中文/纯符号型号在 slugify 后为空 -> 用随机后缀，避免所有商品共用一个 slug
+  let s = slugify(base) || `model-${crypto.randomBytes(3).toString('hex')}`;
   if (findProduct(s)) s = `${s}-${Date.now().toString(36)}`;
   return s;
 }
