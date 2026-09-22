@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       figmaSiteConfiguration(siteConfiguration),
+      ...(siteConfiguration.siteUrl ? [siteSitemap(siteConfiguration.siteUrl)] : []),
       figmaErrorOverlayReplay(),
       figmaReactRefreshBoundaryFallback(),
       figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
@@ -34,6 +35,8 @@ export default defineConfig(({ mode }) => {
       watch: { ignored: ['**/.figma/**'] },
       // 本地开发/预览没有自带后端，把 /api 与 /uploads 代理到线上 CMS API。
       // changeOrigin + 重写 Origin 是为了通过后端的 CSRF Origin 白名单校验。
+      // 注意：目标必须是**在服务中**的域名。这里曾指向 seatoys.aaatslydaaa.ru ——
+      // 该域名在 nic.ru 无 A 记录（NXDOMAIN），导致本地拿不到任何数据、页面始终渲染兜底数据。
       proxy: {
         '/api': {
           target: 'https://seadoo.aaatslydaaa.ru',
@@ -57,6 +60,8 @@ type FigmaSiteConfiguration = {
   title?: string
   description?: string
   language?: string
+  /** 站点规范地址（无尾斜杠）。用于 Open Graph / JSON-LD / sitemap。 */
+  siteUrl?: string
   robots?: {
     index?: boolean
   }
@@ -65,6 +70,8 @@ type FigmaSiteConfiguration = {
   }
   openGraph?: {
     image?: string
+    locale?: string
+    siteName?: string
   }
   analytics?: {
     googleAnalyticsId?: string
@@ -77,6 +84,45 @@ type FigmaSiteConfiguration = {
   }
   accessibility?: {
     addBypassLinks?: boolean
+  }
+}
+
+/**
+ * 生成 sitemap.xml。
+ *
+ * 商品页 URL 是动态的，构建期从公开 API 读取一次；**取不到时只输出首页且不报错**
+ * （离线构建、CI 网络受限都属正常情况，不应让构建失败）。
+ * 若 sitemap 长期只含首页，说明构建环境访问不了线上 API —— 此时应在部署前先跑一次构建。
+ */
+function siteSitemap(siteUrl: string): Plugin {
+  return {
+    name: 'dyride-sitemap',
+    async generateBundle() {
+      const urls = [`${siteUrl}/`]
+      try {
+        const res = await fetch(`${siteUrl}/api/products`, {
+          signal: AbortSignal.timeout(8000),
+        })
+        if (res.ok) {
+          const list: unknown = await res.json()
+          if (Array.isArray(list)) {
+            for (const p of list as Array<{ slug?: unknown }>) {
+              if (typeof p?.slug === 'string' && p.slug) {
+                urls.push(`${siteUrl}/inventory/${p.slug}`)
+              }
+            }
+          }
+        }
+      } catch {
+        // 构建期无法访问线上 API：仅输出首页，退出构建仍成功
+      }
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map((u) => `  <url><loc>${u.replace(/&/g, '&amp;')}</loc></url>`).join('\n')}
+</urlset>
+`
+      this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: xml })
+    },
   }
 }
 
@@ -96,6 +142,9 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
   const description = config.description ?? ''
   const favicon = config.icons?.icon ?? ''
   const socialImage = config.openGraph?.image ?? ''
+  const ogLocale = config.openGraph?.locale ?? ''
+  const ogSiteName = config.openGraph?.siteName ?? ''
+  const siteUrl = (config.siteUrl ?? '').replace(/\/+$/, '')
   const language = sanitizeHtmlValue(config.language) || 'en'
   const googleAnalyticsId = sanitizeHtmlValue(config.analytics?.googleAnalyticsId)
   const headStart = config.customScripts?.headStart ?? ''
@@ -156,6 +205,55 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
             { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' }, injectTo: 'head' },
             { tag: 'meta', attrs: { name: 'twitter:image', content: socialImage }, injectTo: 'head' },
           )
+        }
+        // ---- 补充 Open Graph / Twitter 字段 ----
+        // 注意：这里**刻意不注入 rel="canonical"**。本站是客户端路由的单页应用，
+        // 静态壳会被所有路由复用；若注入指向首页的 canonical，等于告诉搜索引擎
+        // 「所有商品页的规范地址都是首页」，会把商品页从索引里挤掉。
+        // 每页的 canonical / og:url 由运行时 `useSeo()`（src/seo.ts）按路由更新。
+        if (ogSiteName) {
+          tags.push({ tag: 'meta', attrs: { property: 'og:site_name', content: ogSiteName }, injectTo: 'head' })
+        }
+        if (ogLocale) {
+          tags.push({ tag: 'meta', attrs: { property: 'og:locale', content: ogLocale }, injectTo: 'head' })
+        }
+        if (siteUrl) {
+          tags.push(
+            { tag: 'meta', attrs: { property: 'og:type', content: 'website' }, injectTo: 'head' },
+            { tag: 'meta', attrs: { property: 'og:url', content: `${siteUrl}/` }, injectTo: 'head' },
+          )
+        }
+        if (title) {
+          tags.push({ tag: 'meta', attrs: { name: 'twitter:title', content: title }, injectTo: 'head' })
+        }
+        if (description) {
+          tags.push({ tag: 'meta', attrs: { name: 'twitter:description', content: description }, injectTo: 'head' })
+        }
+        // ---- 结构化数据（卖给 Yandex/Google 的商家卡片）----
+        if (siteUrl) {
+          const jsonLd: Record<string, unknown> = {
+            '@context': 'https://schema.org',
+            '@type': 'AutoDealer',
+            name: ogSiteName || title,
+            url: `${siteUrl}/`,
+            description,
+            areaServed: { '@type': 'City', name: 'Челябинск' },
+            address: {
+              '@type': 'PostalAddress',
+              addressLocality: 'Челябинск',
+              addressCountry: 'RU',
+            },
+            currenciesAccepted: 'RUB',
+            priceRange: '₽₽',
+          }
+          if (socialImage) jsonLd.image = socialImage
+          tags.push({
+            tag: 'script',
+            attrs: { type: 'application/ld+json' },
+            // 转义 `<` 防止内容提前闭合 script 标签
+            children: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+            injectTo: 'head',
+          })
         }
 
         if (googleAnalyticsId) {

@@ -1,0 +1,644 @@
+{
+  "generatedAt": "2026-09-22T17:30:47.528Z",
+  "base": "https://seadoo.aaatslydaaa.ru",
+  "fontsBlocked": true,
+  "results": [
+    {
+      "viewport": "320x568",
+      "page": "/",
+      "styleReady": true,
+      "docScrollWidth": 320,
+      "innerWidth": 320,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "320x568",
+      "page": "/inventory/rxt-x-rs-300-2023",
+      "styleReady": true,
+      "docScrollWidth": 320,
+      "innerWidth": 320,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [
+        {
+          "natural": 1200,
+          "displayW": 288,
+          "overshoot": 2.08
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 6.52
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 6.52
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 6.52
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 6.52
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 6.52
+        }
+      ],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "320x568",
+      "page": "/no-such-page",
+      "styleReady": true,
+      "docScrollWidth": 320,
+      "innerWidth": 320,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "320x568",
+      "page": "modal(header button)",
+      "styleReady": true,
+      "opened": {
+        "found": true
+      },
+      "found": true,
+      "sheet": [
+        320,
+        500
+      ],
+      "sheetClass": "modal-sheet",
+      "panel": [
+        280,
+        353
+      ],
+      "panelClass": "",
+      "anchoredToBottom": true,
+      "withinViewport": true,
+      "maxHeight": "499.84px",
+      "overflowY": "auto",
+      "contentScrollable": true,
+      "minInputFontSize": 16,
+      "closeButton": [
+        44,
+        44
+      ],
+      "submitButton": [
+        280,
+        51
+      ],
+      "submitFillsWidth": true,
+      "bodyScrollLocked": true,
+      "docOverflow": 0
+    },
+    {
+      "viewport": "360x740",
+      "page": "/",
+      "styleReady": true,
+      "docScrollWidth": 360,
+      "innerWidth": 360,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "360x740",
+      "page": "/inventory/rxt-x-rs-300-2023",
+      "styleReady": true,
+      "docScrollWidth": 360,
+      "innerWidth": 360,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        }
+      ],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "360x740",
+      "page": "/no-such-page",
+      "styleReady": true,
+      "docScrollWidth": 360,
+      "innerWidth": 360,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "360x740",
+      "page": "modal(header button)",
+      "styleReady": true,
+      "opened": {
+        "found": true
+      },
+      "found": true,
+      "sheet": [
+        360,
+        525
+      ],
+      "sheetClass": "modal-sheet",
+      "panel": [
+        320,
+        353
+      ],
+      "panelClass": "",
+      "anchoredToBottom": true,
+      "withinViewport": true,
+      "maxHeight": "651.2px",
+      "overflowY": "auto",
+      "contentScrollable": false,
+      "minInputFontSize": 16,
+      "closeButton": [
+        44,
+        44
+      ],
+      "submitButton": [
+        320,
+        51
+      ],
+      "submitFillsWidth": true,
+      "bodyScrollLocked": true,
+      "docOverflow": 0
+    },
+    {
+      "viewport": "375x812",
+      "page": "/",
+      "styleReady": true,
+      "docScrollWidth": 375,
+      "innerWidth": 375,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "375x812",
+      "page": "/inventory/rxt-x-rs-300-2023",
+      "styleReady": true,
+      "docScrollWidth": 375,
+      "innerWidth": 375,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        }
+      ],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "375x812",
+      "page": "/no-such-page",
+      "styleReady": true,
+      "docScrollWidth": 375,
+      "innerWidth": 375,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "375x812",
+      "page": "modal(header button)",
+      "styleReady": true,
+      "opened": {
+        "found": true
+      },
+      "found": true,
+      "sheet": [
+        375,
+        525
+      ],
+      "sheetClass": "modal-sheet",
+      "panel": [
+        335,
+        353
+      ],
+      "panelClass": "",
+      "anchoredToBottom": true,
+      "withinViewport": true,
+      "maxHeight": "714.56px",
+      "overflowY": "auto",
+      "contentScrollable": false,
+      "minInputFontSize": 16,
+      "closeButton": [
+        44,
+        44
+      ],
+      "submitButton": [
+        335,
+        51
+      ],
+      "submitFillsWidth": true,
+      "bodyScrollLocked": true,
+      "docOverflow": 0
+    },
+    {
+      "viewport": "390x844",
+      "page": "/",
+      "styleReady": true,
+      "docScrollWidth": 390,
+      "innerWidth": 390,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "390x844",
+      "page": "/inventory/rxt-x-rs-300-2023",
+      "styleReady": true,
+      "docScrollWidth": 390,
+      "innerWidth": 390,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        }
+      ],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "390x844",
+      "page": "/no-such-page",
+      "styleReady": true,
+      "docScrollWidth": 390,
+      "innerWidth": 390,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "390x844",
+      "page": "modal(header button)",
+      "styleReady": true,
+      "opened": {
+        "found": true
+      },
+      "found": true,
+      "sheet": [
+        390,
+        525
+      ],
+      "sheetClass": "modal-sheet",
+      "panel": [
+        350,
+        353
+      ],
+      "panelClass": "",
+      "anchoredToBottom": true,
+      "withinViewport": true,
+      "maxHeight": "742.72px",
+      "overflowY": "auto",
+      "contentScrollable": false,
+      "minInputFontSize": 16,
+      "closeButton": [
+        44,
+        44
+      ],
+      "submitButton": [
+        350,
+        51
+      ],
+      "submitFillsWidth": true,
+      "bodyScrollLocked": true,
+      "docOverflow": 0
+    },
+    {
+      "viewport": "414x896",
+      "page": "/",
+      "styleReady": true,
+      "docScrollWidth": 414,
+      "innerWidth": 414,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "414x896",
+      "page": "/inventory/rxt-x-rs-300-2023",
+      "styleReady": true,
+      "docScrollWidth": 414,
+      "innerWidth": 414,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 4.35
+        }
+      ],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "414x896",
+      "page": "/no-such-page",
+      "styleReady": true,
+      "docScrollWidth": 414,
+      "innerWidth": 414,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "414x896",
+      "page": "modal(header button)",
+      "styleReady": true,
+      "opened": {
+        "found": true
+      },
+      "found": true,
+      "sheet": [
+        414,
+        525
+      ],
+      "sheetClass": "modal-sheet",
+      "panel": [
+        374,
+        353
+      ],
+      "panelClass": "",
+      "anchoredToBottom": true,
+      "withinViewport": true,
+      "maxHeight": "788.48px",
+      "overflowY": "auto",
+      "contentScrollable": false,
+      "minInputFontSize": 16,
+      "closeButton": [
+        44,
+        44
+      ],
+      "submitButton": [
+        374,
+        51
+      ],
+      "submitFillsWidth": true,
+      "bodyScrollLocked": true,
+      "docOverflow": 0
+    },
+    {
+      "viewport": "768x1024",
+      "page": "/",
+      "styleReady": true,
+      "docScrollWidth": 768,
+      "innerWidth": 768,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "768x1024",
+      "page": "/inventory/rxt-x-rs-300-2023",
+      "styleReady": true,
+      "docScrollWidth": 768,
+      "innerWidth": 768,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 6.52
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 6.52
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 6.52
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 6.52
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 6.52
+        },
+        {
+          "natural": 1200,
+          "displayW": 92,
+          "overshoot": 6.52
+        }
+      ],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "768x1024",
+      "page": "/no-such-page",
+      "styleReady": true,
+      "docScrollWidth": 768,
+      "innerWidth": 768,
+      "overflow": 0,
+      "overflowers": [],
+      "smallFonts": [],
+      "smallTargets": [],
+      "bigImages": [],
+      "textAdjust": "100%"
+    },
+    {
+      "viewport": "768x1024",
+      "page": "modal(header button)",
+      "styleReady": true,
+      "opened": {
+        "found": true
+      },
+      "found": true,
+      "sheet": [
+        560,
+        530
+      ],
+      "sheetClass": "modal-sheet",
+      "panel": [
+        520,
+        353
+      ],
+      "panelClass": "",
+      "anchoredToBottom": true,
+      "withinViewport": true,
+      "maxHeight": "901.12px",
+      "overflowY": "auto",
+      "contentScrollable": false,
+      "minInputFontSize": 16,
+      "closeButton": [
+        44,
+        44
+      ],
+      "submitButton": [
+        520,
+        51
+      ],
+      "submitFillsWidth": true,
+      "bodyScrollLocked": true,
+      "docOverflow": 0
+    }
+  ],
+  "fatal": []
+}

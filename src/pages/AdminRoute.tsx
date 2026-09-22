@@ -1,9 +1,13 @@
 import { lazy, Suspense } from "react";
+import { useSeo } from "../seo";
 
 // 后台管理页单独打包（code-split），访客不加载后台代码
 const Admin = lazy(() => import("./Admin"));
 
 export default function AdminRoute() {
+  // 后台不应进入搜索引擎索引（robots.txt 已 Disallow，这里再加一道 meta noindex）
+  useSeo({ title: "Админ", path: "/admin", noindex: true });
+
   return (
     <Suspense
       fallback={

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import type { JetSki } from "../data/inventory";
+import type { JetSki } from "../types";
 import { api, DEFAULT_SETTINGS, type Lead, type SiteSettings } from "../api";
+import { invalidateProducts, invalidateSettings } from "../store";
 
 type Tab = "products" | "leads" | "settings";
 
@@ -109,7 +110,7 @@ export default function Admin() {
 
   if (authed === null) {
     return (
-      <div style={{ minHeight: "100vh", background: "#F4F2EE", display: "flex", alignItems: "center", justifyContent: "center", color: "#666666", fontSize: "13px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+      <div className="vh-full" style={{ background: "#F4F2EE", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 var(--page-x)", textAlign: "center", color: "#666666", fontSize: "13px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
         Проверка сессии...
       </div>
     );
@@ -133,27 +134,36 @@ export default function Admin() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F2EE" }}>
-      <header style={{ background: "#111111", padding: "28px 40px" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+    <div className="vh-full" style={{ background: "#F4F2EE" }}>
+      {/* 非固定头部同样需要刘海安全区：viewport-fit=cover 下页面内容会顶到状态栏 */}
+      <header
+        style={{
+          background: "#111111",
+          paddingLeft: "var(--page-x)",
+          paddingRight: "var(--page-x)",
+          paddingBottom: "24px",
+          paddingTop: "calc(24px + env(safe-area-inset-top, 0px))",
+        }}
+      >
+        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
           <div>
-            <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginBottom: "6px" }}>
-              SEA-DOO · АДМИН
+            <div style={{ fontSize: "var(--fs-caps)", fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginBottom: "6px" }}>
+              DY_RIDE · АДМИН
             </div>
-            <h1 style={{ fontSize: "26px", fontWeight: 800, color: "#FFFFFF", margin: 0, letterSpacing: "-0.01em" }}>
+            <h1 style={{ fontSize: "clamp(22px, 5vw, 26px)", fontWeight: 800, color: "#FFFFFF", margin: 0, letterSpacing: "-0.01em" }}>
               管理后台
             </h1>
           </div>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button onClick={() => navigate("/")} style={btnGhostLight}>← 网站</button>
-            <button onClick={logout} style={btnGhostLight}>退出</button>
+            <button onClick={() => navigate("/")} className="btn-touch" style={btnGhostLight}>← 网站</button>
+            <button onClick={logout} className="btn-touch" style={btnGhostLight}>退出</button>
           </div>
         </div>
       </header>
 
       <TabBar tab={tab} onChange={setTab} />
 
-      <main style={{ maxWidth: "1200px", margin: "0 auto", padding: "32px 40px 64px" }}>
+      <main style={{ maxWidth: "1200px", margin: "0 auto", padding: "32px var(--page-x) 64px" }}>
         {tab === "products" && (
           <ProductsTab
             onNew={() => setEditor({ mode: "new" })}
@@ -175,7 +185,8 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   ];
   return (
     <div style={{ background: "#FFFFFF", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
-      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 40px", display: "flex", gap: "4px" }}>
+      {/* 标签数量固定为 3 个，窄屏可能超出，允许横向滑动而不换行 */}
+      <div className="thumbs-scroll" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 var(--page-x)", display: "flex", gap: "4px", overflowX: "auto" }}>
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -184,14 +195,16 @@ function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
               background: "none",
               border: "none",
               borderBottom: tab === t.key ? "3px solid #111111" : "3px solid transparent",
-              padding: "16px 22px",
+              padding: "var(--tab-pad)",
               fontFamily: "inherit",
-              fontSize: "12px",
+              fontSize: "var(--fs-tab)",
               fontWeight: tab === t.key ? 700 : 500,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
               color: tab === t.key ? "#111111" : "#999999",
               cursor: "pointer",
+              whiteSpace: "nowrap",
+              flex: "0 0 auto",
             }}
           >
             {t.label}
@@ -225,13 +238,14 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F2EE", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div className="vh-full" style={{ background: "#F4F2EE", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px var(--page-x)" }}>
       <form
         onSubmit={submit}
-        style={{ background: "#FFFFFF", width: "360px", padding: "48px 40px", boxShadow: "0 12px 48px rgba(0,0,0,0.08)" }}
+        /* 原为固定 360px，在 320px 窄屏上会横向溢出，改为自适应 + 上限 */
+        style={{ background: "#FFFFFF", width: "100%", maxWidth: "360px", padding: "40px var(--page-x)", boxShadow: "0 12px 48px rgba(0,0,0,0.08)" }}
       >
-        <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "#999999", marginBottom: "8px" }}>
-          SEA-DOO · АДМИН
+        <div style={{ fontSize: "var(--fs-caps)", fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "#999999", marginBottom: "8px" }}>
+          DY_RIDE · АДМИН
         </div>
         <h1 style={{ fontSize: "22px", fontWeight: 800, color: "#111111", margin: "0 0 28px", letterSpacing: "-0.01em" }}>
           管理后台
@@ -248,7 +262,8 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
         <button
           type="submit"
           disabled={busy}
-          style={{ ...btnDark, width: "100%", marginTop: "20px", opacity: busy ? 0.6 : 1 }}
+          className="btn-touch btn-touch--block"
+          style={{ ...btnDark, marginTop: "20px", opacity: busy ? 0.6 : 1 }}
         >
           {busy ? "ВХОД..." : "ВОЙТИ"}
         </button>
@@ -292,6 +307,7 @@ function ProductsTab({ onNew, onEdit }: { onNew: () => void; onEdit: (p: JetSki)
     if (!window.confirm(`Удалить «${p.model}»?`)) return;
     try {
       await api.deleteProduct(p.slug);
+      invalidateProducts();
       refresh();
     } catch (e) {
       alert((e as Error).message);
@@ -300,9 +316,9 @@ function ProductsTab({ onNew, onEdit }: { onNew: () => void; onEdit: (p: JetSki)
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      <div className="row-split row-split--center" style={{ marginBottom: "20px" }}>
         <div style={{ fontSize: "13px", color: "#666666" }}>{products.length} 件商品</div>
-        <button onClick={onNew} style={btnDark}>+ 新建商品</button>
+        <button onClick={onNew} className="btn-touch" style={btnDark}>+ 新建商品</button>
       </div>
 
       {loading && <div style={{ color: "#666666", fontSize: "13px" }}>Загрузка...</div>}
@@ -318,32 +334,34 @@ function ProductsTab({ onNew, onEdit }: { onNew: () => void; onEdit: (p: JetSki)
         {products.map((p, i) => (
           <div
             key={`${p.slug || "item"}-${i}`}
-            style={{ background: "#FFFFFF", display: "flex", alignItems: "center", gap: "20px", padding: "14px 20px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}
+            className="admin-item"
+            style={{ background: "#FFFFFF", padding: "14px 16px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}
           >
             {p.heroImage ? (
               <img
                 src={p.heroImage}
                 alt={p.model}
-                style={{ width: "88px", height: "60px", objectFit: "cover", background: "#E8E6E2", flex: "0 0 auto" }}
+                className="admin-item__thumb"
+                style={{ background: "#E8E6E2" }}
               />
             ) : (
-              <div style={{ width: "88px", height: "60px", background: "#E8E6E2", flex: "0 0 auto" }} />
+              <div className="admin-item__thumb" style={{ background: "#E8E6E2" }} />
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: "14px", fontWeight: 700, color: "#111111", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.model}</div>
-              <div style={{ fontSize: "11px", color: "#666666", marginTop: "4px" }}>
+              <div style={{ fontSize: "var(--fs-meta)", color: "#666666", marginTop: "4px" }}>
                 {p.year} · {p.hours} моточ. · {p.hp} л.с. · {p.images.length} фото
               </div>
             </div>
             <div style={{ textAlign: "right", flex: "0 0 auto" }}>
               <div style={{ fontSize: "15px", fontWeight: 700, color: p.status === "sold" ? "#999999" : "#111111" }}>{p.price}</div>
-              <span style={{ fontSize: "9px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: p.status === "sold" ? "#999999" : "#0A7A33" }}>
+              <span style={{ fontSize: "var(--fs-micro)", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: p.status === "sold" ? "#999999" : "#0A7A33" }}>
                 {p.status === "sold" ? "ПРОДАНО" : "В НАЛИЧИИ"}
               </span>
             </div>
-            <div style={{ display: "flex", gap: "8px", flex: "0 0 auto" }}>
-              <button onClick={() => onEdit(p)} style={btnDark}>编辑</button>
-              <button onClick={() => remove(p)} style={btnDanger}>删除</button>
+            <div className="admin-item__actions">
+              <button onClick={() => onEdit(p)} className="btn-touch" style={btnDark}>编辑</button>
+              <button onClick={() => remove(p)} className="btn-touch" style={btnDanger}>删除</button>
             </div>
           </div>
         ))}
@@ -417,7 +435,7 @@ function LeadsTab() {
             key={l.id}
             style={{
               background: "#FFFFFF",
-              padding: "20px 24px",
+              padding: "20px var(--card-pad-x)",
               boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
               borderLeft: l.status === "new" ? "3px solid #111111" : "3px solid transparent",
             }}
@@ -425,27 +443,27 @@ function LeadsTab() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "15px", fontWeight: 700, color: "#111111" }}>{l.name || "—"}</span>
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: "#111111", overflowWrap: "anywhere" }}>{l.name || "—"}</span>
                   {l.status === "new" && (
-                    <span style={{ background: "#111111", color: "#FFFFFF", fontSize: "9px", letterSpacing: "0.1em", padding: "3px 8px", textTransform: "uppercase" }}>NEW</span>
+                    <span style={{ background: "#111111", color: "#FFFFFF", fontSize: "var(--fs-micro)", letterSpacing: "0.1em", padding: "3px 8px", textTransform: "uppercase" }}>NEW</span>
                   )}
                 </div>
-                <div style={{ fontSize: "12px", color: "#666666", marginTop: "6px", lineHeight: 1.6 }}>
+                <div style={{ fontSize: "var(--fs-meta)", color: "#666666", marginTop: "6px", lineHeight: 1.6 }}>
                   {l.phone && <div>📞 {l.phone}</div>}
                   {l.subject && <div style={{ color: "#111111", marginTop: "2px" }}>{l.subject}</div>}
                 </div>
                 {l.message && (
-                  <div style={{ marginTop: "10px", fontSize: "13px", color: "#333333", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{l.message}</div>
+                  <div style={{ marginTop: "10px", fontSize: "13px", color: "#333333", lineHeight: 1.6, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{l.message}</div>
                 )}
-                <div style={{ marginTop: "10px", fontSize: "11px", color: "#999999" }}>
+                <div style={{ marginTop: "10px", fontSize: "var(--fs-meta)", color: "#999999" }}>
                   {new Date(l.createdAt).toLocaleString("ru-RU")}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: "8px", flex: "0 0 auto" }}>
+              <div className="admin-item__actions">
                 {l.status === "new" && (
-                  <button onClick={() => markRead(l)} style={btnDark}>标记已读</button>
+                  <button onClick={() => markRead(l)} className="btn-touch" style={btnDark}>标记已读</button>
                 )}
-                <button onClick={() => remove(l)} style={btnDanger}>删除</button>
+                <button onClick={() => remove(l)} className="btn-touch" style={btnDanger}>删除</button>
               </div>
             </div>
           </div>
@@ -461,6 +479,10 @@ function LeadsTab() {
 function SettingsTab() {
   const [form, setForm] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
+  // 是否成功从服务端取到过设置。未取到时**禁止保存** ——
+  // 否则表单里是 DEFAULT_SETTINGS 的占位值（历史版本为硬编码的 SEA-DOO / © 2025），
+  // 管理员随手保存就会把这些错误文案写进线上站点。
+  const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -469,7 +491,10 @@ function SettingsTab() {
 
   useEffect(() => {
     api.getAdminSettings()
-      .then((s) => setForm({ ...DEFAULT_SETTINGS, ...s }))
+      .then((s) => {
+        setForm({ ...DEFAULT_SETTINGS, ...s });
+        setLoaded(true);
+      })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }, []);
@@ -477,11 +502,17 @@ function SettingsTab() {
   const set = <K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
+    if (!loaded) {
+      setError("设置尚未加载成功，请刷新页面后重试（避免用占位值覆盖线上文案）");
+      return;
+    }
     setBusy(true);
     setError("");
     setSaved(false);
     try {
       await api.updateSettings(form);
+      // 使前台全局数据层里的设置缓存失效，否则同一会话内要等 5 分钟才看到新文案
+      invalidateSettings();
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
@@ -559,9 +590,9 @@ function SettingsTab() {
 
       <Section title="首页 Hero">
         <Field label="背景视频 URL（或上传 mp4/webm）">
-          <div style={{ display: "flex", gap: "10px" }}>
-            <input value={form.heroVideo} onChange={(e) => set("heroVideo", e.target.value)} style={{ ...inputStyle, flex: 1 }} />
-            <label style={{ ...btnDark, display: "flex", alignItems: "center", cursor: "pointer" }}>
+          <div className="field-row">
+            <input value={form.heroVideo} onChange={(e) => set("heroVideo", e.target.value)} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+            <label className="btn-touch btn-touch--block" style={{ ...btnDark, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
               {uploading ? "上传中..." : "上传视频"}
               <input ref={videoRef} type="file" accept="video/mp4,video/webm" onChange={(e) => uploadVideo(e.target.files)} style={{ display: "none" }} />
             </label>
@@ -575,8 +606,8 @@ function SettingsTab() {
             <input type="number" step="0.05" min="0.2" max="0.9" value={form.heroOpacity} onChange={(e) => set("heroOpacity", e.target.value)} style={inputStyle} />
           </Field>
         </Grid>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "12px" }}>
-          <div style={{ width: "240px", aspectRatio: "16/7", background: "#111111", overflow: "hidden" }}>
+        <div className="field-row field-row--center" style={{ marginTop: "12px" }}>
+          <div style={{ width: "100%", maxWidth: "240px", aspectRatio: "16/7", background: "#111111", overflow: "hidden", flex: "0 0 auto" }}>
             {form.heroImage ? (
               <img src={form.heroImage} alt="hero preview" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: Number(form.heroOpacity) || 0.55 }} />
             ) : null}
@@ -607,8 +638,8 @@ function SettingsTab() {
         </Grid>
       </Section>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        <button onClick={save} disabled={busy} style={{ ...btnDark, padding: "14px 40px", opacity: busy ? 0.6 : 1 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px" }}>
+        <button onClick={save} disabled={busy} className="btn-touch" style={{ ...btnDark, padding: "14px 40px", opacity: busy ? 0.6 : 1 }}>
           {busy ? "СОХРАНЕНИЕ..." : "保存设置"}
         </button>
         <span style={{ fontSize: "12px", color: "#999999" }}>保存后前台立即生效（首次进入网站时自动刷新）。</span>
@@ -643,6 +674,8 @@ function Editor({
       const payload = fromForm(form);
       if (isNew) await api.createProduct(payload);
       else await api.updateProduct(product.slug, payload);
+      // 使前台全局数据层里的商品缓存失效（含按 slug 的单条缓存）
+      invalidateProducts();
       onSaved();
     } catch (e) {
       setError((e as Error).message);
@@ -683,22 +716,30 @@ function Editor({
   const setHero = (img: string) => setForm((f) => ({ ...f, heroImage: img }));
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F2EE" }}>
-      <header style={{ background: "#111111", padding: "28px 40px" }}>
+    <div className="vh-full" style={{ background: "#F4F2EE" }}>
+      <header
+        style={{
+          background: "#111111",
+          paddingLeft: "var(--page-x)",
+          paddingRight: "var(--page-x)",
+          paddingBottom: "24px",
+          paddingTop: "calc(24px + env(safe-area-inset-top, 0px))",
+        }}
+      >
         <div style={{ maxWidth: "1100px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-          <h1 style={{ fontSize: "22px", fontWeight: 800, color: "#FFFFFF", margin: 0 }}>
+          <h1 style={{ fontSize: "clamp(20px, 4.5vw, 22px)", fontWeight: 800, color: "#FFFFFF", margin: 0 }}>
             {isNew ? "新建商品" : "编辑商品"}
           </h1>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button onClick={onCancel} style={btnGhostLight}>取消</button>
-            <button onClick={save} disabled={busy} style={{ ...btnLight, opacity: busy ? 0.6 : 1 }}>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button onClick={onCancel} className="btn-touch" style={btnGhostLight}>取消</button>
+            <button onClick={save} disabled={busy} className="btn-touch" style={{ ...btnLight, opacity: busy ? 0.6 : 1 }}>
               {busy ? "СОХРАНЕНИЕ..." : "保存"}
             </button>
           </div>
         </div>
       </header>
 
-      <main style={{ maxWidth: "1100px", margin: "0 auto", padding: "40px" }}>
+      <main style={{ maxWidth: "1100px", margin: "0 auto", padding: "32px var(--page-x) 64px" }}>
         {error && <div style={{ background: "#FDEBEC", color: "#B00020", padding: "12px 16px", marginBottom: "20px", fontSize: "13px" }}>{error}</div>}
 
         <Section title="基本信息">
@@ -762,12 +803,13 @@ function Editor({
         <Section title={`图片（${form.images.length}）`}>
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
             {form.images.map((img, idx) => (
-              <div key={img + idx} style={{ position: "relative", width: "150px" }}>
-                <img src={img} alt={`фото ${idx + 1}`} style={{ width: "150px", height: "110px", objectFit: "cover", display: "block", border: form.heroImage === img ? "2px solid #111111" : "2px solid #E0DED9" }} />
+              <div key={img + idx} className="admin-thumb">
+                <img src={img} alt={`фото ${idx + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", border: form.heroImage === img ? "2px solid #111111" : "2px solid #E0DED9" }} />
                 <div style={{ position: "absolute", top: "6px", left: "6px", display: "flex", gap: "6px" }}>
                   {form.heroImage !== img && (
                     <button
                       onClick={() => setHero(img)}
+                      className="admin-thumb__btn"
                       style={{ ...miniBtn, background: "#FFFFFF", color: "#111111" }}
                       title="设为主图"
                     >
@@ -776,6 +818,7 @@ function Editor({
                   )}
                   <button
                     onClick={() => removeImage(idx)}
+                    className="admin-thumb__btn"
                     style={{ ...miniBtn, background: "#B00020", color: "#FFFFFF" }}
                     title="删除"
                   >
@@ -783,16 +826,18 @@ function Editor({
                   </button>
                 </div>
                 {form.heroImage === img && (
-                  <div style={{ position: "absolute", bottom: "6px", left: "6px", background: "#111111", color: "#FFFFFF", fontSize: "9px", letterSpacing: "0.1em", padding: "2px 6px", textTransform: "uppercase" }}>
+                  <div style={{ position: "absolute", bottom: "6px", left: "6px", background: "#111111", color: "#FFFFFF", fontSize: "var(--fs-micro)", letterSpacing: "0.1em", padding: "2px 6px", textTransform: "uppercase" }}>
                     Главная
                   </div>
                 )}
               </div>
             ))}
 
+            {/* 上传框复用 .admin-thumb 的尺寸规则，窄屏自动两列 */}
             <label
+              className="admin-thumb"
               style={{
-                width: "150px", height: "110px", border: "1px dashed #999999", display: "flex",
+                border: "1px dashed #999999", display: "flex",
                 flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer",
                 color: "#666666", fontSize: "12px", gap: "6px", background: "#FFFFFF",
               }}
@@ -826,7 +871,10 @@ const inputStyle: React.CSSProperties = {
   border: "1px solid rgba(0,0,0,0.15)",
   background: "#FFFFFF",
   padding: "11px 14px",
-  fontSize: "14px",
+  /* 窄屏由令牌提升到 16px：iOS Safari 对 <16px 的输入框聚焦时会自动放大整页 */
+  fontSize: "var(--fs-input)",
+  /* 保证输入框本身也是合格触控目标 */
+  minHeight: "var(--touch)",
   color: "#111111",
   fontFamily: "inherit",
   outline: "none",
@@ -838,7 +886,7 @@ const btnDark: React.CSSProperties = {
   border: "none",
   padding: "10px 22px",
   fontFamily: "inherit",
-  fontSize: "11px",
+  fontSize: "var(--fs-meta)",
   fontWeight: 600,
   letterSpacing: "0.14em",
   textTransform: "uppercase",
@@ -851,7 +899,7 @@ const btnLight: React.CSSProperties = {
   border: "none",
   padding: "10px 22px",
   fontFamily: "inherit",
-  fontSize: "11px",
+  fontSize: "var(--fs-meta)",
   fontWeight: 700,
   letterSpacing: "0.14em",
   textTransform: "uppercase",
@@ -864,7 +912,7 @@ const btnGhostLight: React.CSSProperties = {
   color: "rgba(255,255,255,0.85)",
   padding: "10px 22px",
   fontFamily: "inherit",
-  fontSize: "11px",
+  fontSize: "var(--fs-meta)",
   letterSpacing: "0.14em",
   textTransform: "uppercase",
   cursor: "pointer",
@@ -876,16 +924,15 @@ const btnDanger: React.CSSProperties = {
   border: "1px solid rgba(176,0,32,0.35)",
   padding: "10px 16px",
   fontFamily: "inherit",
-  fontSize: "11px",
+  fontSize: "var(--fs-meta)",
   letterSpacing: "0.12em",
   textTransform: "uppercase",
   cursor: "pointer",
 };
 
+/* 尺寸由 .admin-thumb__btn 提供（窄屏放大到 36px，保证可点） */
 const miniBtn: React.CSSProperties = {
   border: "none",
-  width: "26px",
-  height: "26px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -897,10 +944,10 @@ const miniBtn: React.CSSProperties = {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section style={{ marginBottom: "36px" }}>
-      <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "#666666", marginBottom: "16px", paddingBottom: "10px", borderBottom: "1px solid rgba(0,0,0,0.12)" }}>
+      <div style={{ fontSize: "var(--fs-caps)", fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: "#666666", marginBottom: "16px", paddingBottom: "10px", borderBottom: "1px solid rgba(0,0,0,0.12)" }}>
         {title}
       </div>
-      <div style={{ background: "#FFFFFF", padding: "24px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>{children}</div>
+      <div style={{ background: "#FFFFFF", padding: "20px var(--card-pad-x)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>{children}</div>
     </section>
   );
 }
@@ -908,14 +955,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: "18px" }}>
-      <div style={{ fontSize: "11px", fontWeight: 600, color: "#666666", marginBottom: "6px", letterSpacing: "0.04em" }}>{label}</div>
+      <div style={{ fontSize: "var(--fs-meta)", fontWeight: 600, color: "#666666", marginBottom: "6px", letterSpacing: "0.04em" }}>{label}</div>
       {children}
     </div>
   );
 }
 
 function Grid({ children }: { children: React.ReactNode }) {
+  /* min(200px, 100%) 保证窄屏单列时不超出容器宽度 */
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0 20px" }}>{children}</div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(200px, 100%), 1fr))", gap: "0 20px" }}>{children}</div>
   );
 }

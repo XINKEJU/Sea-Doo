@@ -1,6 +1,16 @@
 {
-  "title": "Sea-Doo Premium Jet Skis | Luxury Used Inventory",
-  "description": "Showcases premium used Sea-Doo jet skis with cinematic visuals and detailed specs in Russian, enabling luxury buyers to explore inventory and contact sellers easily.",
+  "title": "DY_RIDE — гидроциклы и мотовездеходы с пробегом | Челябинск",
+  "description": "Шоурум больших игрушек с пробегом: гидроциклы, мотовездеходы, трициклы. Реальные фото, характеристики и цены. Челябинск и регионы.",
+  "language": "ru",
+  "siteUrl": "https://seadoo.aaatslydaaa.ru",
+  "openGraph": {
+    "image": "https://seadoo.aaatslydaaa.ru/hero-poster.jpg",
+    "locale": "ru_RU",
+    "siteName": "DY_RIDE"
+  },
+  "robots": {
+    "index": true
+  },
   "icons": {
     "icon": "/favicon.svg"
   },

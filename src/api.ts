@@ -1,4 +1,4 @@
-import type { JetSki } from "./data/inventory";
+import type { JetSki } from "./types";
 
 const BASE = "/api";
 
@@ -34,21 +34,30 @@ export interface Lead {
   createdAt: number;
 }
 
-/** 前端兜底设置（与后端 store.DEFAULT_SETTINGS 保持一致，视觉不变） */
+/**
+ * 后台设置表单的占位值（**仅作字段形状参考，绝不可用于渲染**）。
+ *
+ * 为什么品牌相关字段一律留空而不是写死一个品牌名：
+ * 这些值会作为 SettingsTab 表单的初始状态。一旦接口取失败，表单里就是这份占位值，
+ * 管理员若随手保存，就会把占位值写进线上站点 —— 历史版本这里写死的是
+ * 「SEA-DOO / PREMIUM USED / © 2025」，正是线上首屏闪现错误品牌的根源。
+ * 留空 + 后台禁止在未加载成功时保存，两者共同杜绝这类事故。
+ *
+ * 站点设置的首屏渲染走 src/store.ts（数据未就绪时渲染骨架屏）。
+ */
 export const DEFAULT_SETTINGS: SiteSettings = {
-  brandName: "SEA-DOO",
-  brandSub: "PREMIUM USED",
-  footerBrand: "SEA-DOO PREMIUM USED",
-  footerSlogan: "Премиальный шоурум б/у гидроциклов",
-  cityText: "Гидроциклы · Москва и регионы",
-  copyrightText: "© 2025 SEA-DOO PREMIUM USED. Все права защищены.",
+  brandName: "",
+  brandSub: "",
+  footerBrand: "",
+  footerSlogan: "",
+  cityText: "",
+  copyrightText: "",
   contactLabel: "СВЯЗАТЬСЯ",
   phone: "",
   email: "",
   address: "",
-  heroVideo: "/uploads/e40bf07571c426c3e2f297fc00cea830.mp4",
-  heroImage:
-    "https://images.unsplash.com/photo-1649291390039-3d5640328a5a?w=2400&h=1400&fit=crop&auto=format",
+  heroVideo: "",
+  heroImage: "",
   heroOpacity: "0.55",
   sectionLabel: "ТЕКУЩИЙ СКЛАД",
   sectionTitle: "В НАЛИЧИИ И НЕДАВНО ПРОДАННОЕ",
@@ -81,15 +90,30 @@ function translateError(msg: string): string {
   return msg;
 }
 
+/**
+ * 带 HTTP 状态码的接口错误。
+ * 用于区分「资源确实不存在（404）」与「网络/服务不可用」——两者在 UI 上必须给不同反馈：
+ * 前者显示「Модель не найдена」，后者应提供重试入口，否则会误导用户以为商品被下架。
+ */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function j<T>(r: Response): Promise<T> {
   if (!r.ok) {
     const body = await r.json().catch(() => ({}));
     const msg = (body as { error?: string }).error || `HTTP ${r.status}`;
-    if (r.status === 401) throw new Error("未登录或会话已过期，请重新登录");
-    if (r.status === 403) throw new Error("请求被拒绝（来源不合法）");
-    if (r.status === 404) throw new Error("内容不存在");
-    if (r.status === 429) throw new Error("操作过于频繁，请稍后再试");
-    throw new Error(translateError(msg));
+    if (r.status === 401) throw new ApiError("未登录或会话已过期，请重新登录", r.status);
+    if (r.status === 403) throw new ApiError("请求被拒绝（来源不合法）", r.status);
+    if (r.status === 404) throw new ApiError("内容不存在", r.status);
+    if (r.status === 429) throw new ApiError("操作过于频繁，请稍后再试", r.status);
+    throw new ApiError(translateError(msg), r.status);
   }
   return r.json() as Promise<T>;
 }

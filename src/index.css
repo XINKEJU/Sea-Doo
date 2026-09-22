@@ -1,5 +1,57 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&subset=cyrillic,latin&display=swap');
+/* ============================================================================
+ * 0. 自托管字体（Inter 可变字体，v20）
+ * ----------------------------------------------------------------------------
+ * 为什么自托管而不是用 fonts.googleapis.com：
+ * - 本站目标市场是俄罗斯，Google 域名的可达性与速度在该地区不稳定，
+ *   外链字体经常出现长时间不返回，首屏只能以回退字体（system-ui）渲染；
+ * - 外部字体把 CSP 的 style-src / font-src 钉在第三方域上，也无法离线；
+ * - 自托管后字体与站点同源，走同一条（且本就存在的）TLS 连接。
+ *
+ * 子集策略：只保留俄文与拉丁所需 4 个子集，并用 unicode-range 让浏览器按需下载 ——
+ * 俄文页面实际只会取 cyrillic(18.7KB) + latin(48KB)，其余不会发出请求。
+ * 未使用斜体字形，故不含 italic 字面（省 3 个文件）。
+ * 字体文件位于 public/fonts/，与站点同源，由 nginx 的静态资源 location 提供（1y immutable）。
+ * ⚠️ 因为文件名参与一年期不可变缓存，**升级字体必须改文件名里的版本号**（当前 v20），
+ *    否则老用户浏览器会一直用缓存里的旧字体。改版本号时需同步本文件的 4 个 url()
+ *    与 index.html 的 2 个 preload。
+ * 注意：此处**不能**用 @import（会阻塞整张样式表）。
+ * ========================================================================== */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-v20-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-v20-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-v20-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-v20-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
+/* ============================================================================
+ * 1. 重置与全局移动端修正
+ * ========================================================================== */
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -16,19 +68,43 @@ body,
 html {
   scroll-behavior: smooth;
   background-color: #F4F2EE;
+  /* iOS 横屏 / 系统字体放大时不改变正文基准字号，保证设计稿字号可预期 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Firefox 等非 webkit 内核的细滚动条 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  /* 回退链以系统 UI 字体为主：字体文件未就绪时（font-display: swap）先以系统字体渲染，
+     西里尔字母在 Apple/Windows/Android 的 system-ui 下都有良好字面，不会出现方框。 */
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: #F4F2EE;
   color: #111111;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* Hero 为全幅深色区块，禁止横向溢出产生白边 */
   overflow-x: hidden;
+  /* 移动端点击不再出现系统半透明高亮块，反馈交由 :active / 组件状态承担 */
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Hide scrollbar by default, show on scroll */
+/* 响应式媒体兜底：未显式设置尺寸的 <img>/<video> 一律不超过容器宽度，
+   防止后台录入的任意尺寸图片撑破移动端布局（已内联尺寸的元素不受影响） */
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+/* 键盘可达性：焦点环跟随文字颜色，深色区块上自动为白色 */
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 ::-webkit-scrollbar {
   width: 4px;
 }
@@ -39,18 +115,405 @@ body {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 2px;
 }
-/* Firefox 等宽细滚动条（兼容非 webkit 内核） */
-html {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+
+/* 横向滑动条（详情页缩略图）：隐藏滚动条但保留滑动，开启 iOS 惯性滚动 */
+.thumbs-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.thumbs-scroll::-webkit-scrollbar {
+  height: 0;
 }
 
-/* 移动端地址栏折叠时避免底部留白/遮挡（dvh 降级 vh） */
-.hero-vh {
-  height: 100vh;
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================================
+ * 2. 响应式设计令牌 —— 全站唯一断点来源
+ *
+ * 约定：结构性布局属性（display / flex-direction / flex-wrap /
+ * grid-template-columns / position）由第 3 节的语义类承担；
+ * 尺寸类属性通过 var() 注入组件内联样式。
+ * 这样组件仍以内联样式为主（沿用项目既有约定），而媒体查询只在本文件出现一次。
+ * ========================================================================== */
+:root {
+  /* —— 间距 —— */
+  --page-x: 40px;                 /* 页面左右安全边距 */
+  --content-max: 1400px;          /* 内容最大宽度 */
+  --header-h: 72px;               /* 固定头部高度 */
+  --section-y-top: 96px;          /* 区块上留白 */
+  --section-y-bottom: 120px;      /* 区块下留白 */
+  --footer-y: 48px;
+  --detail-gap: 80px;             /* 详情页双列间距 */
+  --detail-aside: 420px;          /* 详情页规格栏宽度 */
+  --admin-x: 40px;                /* 后台水平内距 */
+  --spec-pad: 16px 24px;          /* 规格表行内距 */
+  --banner-y: 48px;               /* 详情页标题横幅纵向内距 */
+  --block-y: 80px;                /* 详情页内容区上内距 */
+  --block-y-bottom: 120px;        /* 详情页内容区下内距 */
+  --gallery-gap: 4px;             /* 图库网格间距 */
+
+  /* —— 卡片 —— */
+  --card-min: 380px;              /* 商品卡自适应最小列宽 */
+  --card-pad-top: 20px;
+  --card-pad-x: 24px;
+
+  /* —— 视图与比例 —— */
+  --hero-h: 100vh;                /* 首屏 Hero 高度 */
+  --detail-hero-aspect: 16 / 7;   /* 详情页主图宽高比 */
+  --thumbs-w: 120px;
+  --thumbs-h: 80px;
+
+  /* —— 弹层 —— */
+  --modal-pad-x: 48px;
+  --modal-pad-top: 48px;
+  --modal-pad-bottom: 56px;
+  --modal-max-w: 560px;
+
+  /* —— 字号（移动端统一上调，解决小字不可读）—— */
+  --fs-micro: 9px;                /* 徽章 */
+  --fs-caps: 10px;                /* 全大写小标签 */
+  --fs-meta: 11px;                /* 次要信息 / 按钮 */
+  --fs-input: 14px;               /* 表单控件：<16px 会触发 iOS 聚焦缩放 */
+  --fs-tab: 12px;
+  --tab-pad: 16px 22px;
+
+  /* —— 触控目标最小边长（WCAG 2.5.8 / Apple HIG 建议 44px）—— */
+  --touch: 44px;
+}
+
+/* 满视口高度：优先 dvh，避免移动端地址栏折叠导致底部留白或内容被遮挡 */
+.vh-full {
+  min-height: 100vh;
 }
 @supports (height: 100dvh) {
-  .hero-vh {
-    height: 100dvh;
+  .vh-full {
+    min-height: 100dvh;
+  }
+}
+
+/* Hero 高度（令牌驱动，移动端收矮，避免整屏深色区块挤压内容） */
+.hero-vh {
+  height: var(--hero-h);
+}
+
+/* —— 平板与小型笔记本 —— */
+@media (max-width: 1024px) {
+  :root {
+    --page-x: 28px;
+    --header-h: 68px;
+    --section-y-top: 72px;
+    --section-y-bottom: 88px;
+    --detail-gap: 48px;
+    --detail-aside: 340px;
+    --card-min: 320px;
+    --admin-x: 24px;
+  }
+}
+
+/* —— 手机：覆盖 320 / 360 / 375 / 390 / 414 / 430 等主流宽度 —— */
+@media (max-width: 768px) {
+  :root {
+    --page-x: 20px;
+    --header-h: 64px;
+    --section-y-top: 56px;
+    --section-y-bottom: 64px;
+    --footer-y: 40px;
+    --card-min: 260px;
+    --card-pad-top: 16px;
+    --card-pad-x: 16px;
+    --detail-gap: 40px;
+    --detail-hero-aspect: 4 / 3;
+    --thumbs-w: 92px;
+    --thumbs-h: 64px;
+    --spec-pad: 14px 16px;
+    --banner-y: 32px;
+    --block-y: 48px;
+    --block-y-bottom: 64px;
+    --gallery-gap: 8px;
+    --modal-pad-x: 20px;
+    --modal-pad-top: 28px;
+    --modal-pad-bottom: 32px;
+    --admin-x: 16px;
+    --fs-micro: 12px;
+    --fs-caps: 12px;
+    --fs-meta: 12px;
+    --fs-input: 16px;   /* >=16px 抑制 iOS Safari 聚焦时自动放大整页 */
+    --fs-tab: 13px;
+    --tab-pad: 14px 14px;
+    --hero-h: 62vh;
+  }
+  @supports (height: 100dvh) {
+    :root {
+      --hero-h: 62dvh;
+    }
+  }
+}
+
+/* —— 超窄屏（iPhone SE 一代 320px 等）—— */
+@media (max-width: 380px) {
+  :root {
+    --page-x: 16px;
+    --card-pad-x: 14px;
+  }
+}
+
+/* ============================================================================
+ * 3. 语义布局原语
+ *    仅承载内联样式无法表达的响应式结构性行为，不是 utility class 体系。
+ * ========================================================================== */
+
+/* —— 固定头部：刘海屏 / 圆角屏安全区 —— */
+.site-header {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.site-header__inner {
+  padding-left: max(var(--page-x), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--page-x), env(safe-area-inset-right, 0px));
+}
+
+/* —— 底部安全区（iPhone 主屏指示条）—— */
+.safe-bottom {
+  padding-bottom: max(var(--footer-y), env(safe-area-inset-bottom, 0px));
+}
+
+/* —— 页脚操作区：桌面右对齐，窄屏堆叠后改左对齐 —— */
+.footer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+@media (max-width: 768px) {
+  .footer-actions {
+    align-items: flex-start;
+  }
+}
+
+/* —— 详情页 / 后台页头：桌面横向两端对齐，窄屏纵向堆叠 —— */
+.row-split {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.row-split--center {
+  align-items: center;
+}
+@media (max-width: 768px) {
+  .row-split {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+  }
+  .row-split--center {
+    align-items: stretch;
+  }
+}
+
+/* —— 商品网格 ——
+   关键修复：轨道下界用 min(var(--card-min), 100%)，单列时不会超过容器宽度。
+   原写法 minmax(380px, 1fr) 在 375px 视口下（容器仅 295px）会把轨道强制为 380px，
+   结果被 body 的 overflow-x: hidden 裁掉右侧 85px，价格与徽章直接消失。 */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min), 100%), 1fr));
+  gap: 2px;
+}
+@media (max-width: 768px) {
+  .card-grid {
+    gap: 10px;
+  }
+}
+
+/* —— 卡片交互：触屏下 CTA 常显（原为 hover 才显，触屏设备永远看不到）——
+   transition 与位移/缩放一并交给 CSS，仅精确指针设备启用 hover 行为。 */
+.card-cta {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.card-media img {
+  transform: none;
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+@media (hover: hover) and (pointer: fine) {
+  .card-cta {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  .card-cta.is-active {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .card-media img.is-active {
+    transform: scale(1.04);
+  }
+}
+
+/* —— 详情页：桌面双列，窄屏单列 —— */
+.detail-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--detail-gap);
+  align-items: start;
+}
+@media (min-width: 1025px) {
+  .detail-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, var(--detail-aside));
+  }
+}
+/* 单列堆叠时 sticky 无意义，且会把规格表钉在固定头部下方遮挡内容 */
+.detail-aside {
+  position: static;
+}
+@media (min-width: 1025px) {
+  .detail-aside {
+    position: sticky;
+    top: calc(var(--header-h) + 24px);
+  }
+}
+/* 价格块：窄屏堆叠后改左对齐，避免悬空右对齐造成视觉断裂 */
+.detail-price {
+  text-align: right;
+}
+@media (max-width: 768px) {
+  .detail-price {
+    text-align: left;
+  }
+}
+
+/* —— 联系弹窗 —— */
+.modal-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;  /* 移动端底部抽屉（单手可达） */
+}
+@media (min-width: 769px) {
+  .modal-overlay {
+    align-items: center;
+  }
+}
+.modal-sheet {
+  width: 100%;
+  max-width: var(--modal-max-w);
+  max-height: 90vh;
+  max-height: 88dvh;    /* 软键盘弹出后仍完整可见，不支持 dvh 时退回上一行 */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: var(--modal-pad-top) var(--modal-pad-x)
+    max(var(--modal-pad-bottom), env(safe-area-inset-bottom, 0px));
+}
+/* 关闭按钮：触控目标补足至 44×44 */
+.modal-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: var(--touch);
+  height: var(--touch);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* —— 触控目标补足：仅触屏 / 窄屏生效，不改变桌面视觉尺寸 —— */
+@media (max-width: 768px), (pointer: coarse) {
+  .btn-touch {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn-touch--block {
+    width: 100%;
+  }
+  /* 品牌 Logo 链接原仅 26px 高，扩展为合格触控目标；
+     justify-content: center 在纵向布局下居中两行文字，不改变左对齐 */
+  .brand-link {
+    min-height: var(--touch);
+    justify-content: center;
+  }
+}
+
+/* —— 后台：列表行窄屏拆行 —— */
+.admin-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+.admin-item__thumb {
+  width: 88px;
+  height: 60px;
+  flex: 0 0 auto;
+  object-fit: cover;
+}
+.admin-item__actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+@media (max-width: 768px) {
+  .admin-item {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .admin-item__thumb {
+    width: 72px;
+    height: 54px;
+  }
+  .admin-item__actions {
+    width: 100%;
+  }
+  .admin-item__actions > * {
+    flex: 1 1 0;
+  }
+}
+
+/* —— 后台：图片缩略图网格（桌面固定 150px，窄屏两列自适应）—— */
+.admin-thumb {
+  position: relative;
+  width: 150px;
+  height: 110px;
+  flex: 0 0 auto;
+}
+.admin-thumb__btn {
+  width: 26px;
+  height: 26px;
+}
+@media (max-width: 768px) {
+  .admin-thumb {
+    width: calc((100% - 12px) / 2);
+    height: 96px;
+  }
+  .admin-thumb__btn {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* —— 后台：表单并排行 —— */
+.field-row {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+.field-row--center {
+  align-items: center;
+}
+@media (max-width: 768px) {
+  .field-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

@@ -25,3 +25,8 @@ logs/
 # Python
 __pycache__/
 *.pyc
+
+# 移动端审计截图：纯二进制证据，体积大（单轮 25 张约 7MB）且可随时用
+# docs/**/audit.mjs 重新生成。审计报告与脚本本身受版本控制。
+docs/**/screenshots/
+docs/**/live-screenshots/

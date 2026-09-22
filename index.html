@@ -3,9 +3,38 @@
   <head>
     <!-- figma:head-start -->
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      移动端视口配置：
+      - width=device-width / initial-scale=1 让布局视口等于设备宽度（否则移动端按 980px 渲染后缩放，导致全站布局错乱、字号过小）
+      - viewport-fit=cover 允许页面延伸到刘海/圆角区域，配合 CSS 的 env(safe-area-inset-*) 做安全区内边距
+      - interactive-widget=resizes-content 让安卓软键盘弹出时收缩布局视口，避免表单被键盘遮挡（其他内核忽略该值）
+      - 不禁用缩放（不加 maximum-scale / user-scalable=no），保证可访问性
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <!-- 移动端浏览器地址栏取色，与站点主色一致，消除白边割裂感 -->
+    <meta name="theme-color" content="#111111" />
+    <meta name="color-scheme" content="light" />
+    <!-- 数字串（价格、电话）不自动识别为拨号链接，避免移动端误触跳转 -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- 字体为自托管（public/fonts/），与站点同源，不依赖任何外部字体 CDN。
+         目标市场为俄罗斯，境外域名在该地区的可达性不稳定，外链字体会导致首屏
+         长时间以回退字体渲染。这里只预加载俄文页面必定会用到的两个子集：
+         cyrillic（正文西里尔字母）与 latin（品牌名/数字/标点）。
+         其余子集由 CSS 的 unicode-range 按需加载，不使用则不发请求。 -->
+    <link
+      rel="preload"
+      href="/fonts/inter-v20-cyrillic.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/inter-v20-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <title><!-- figma:title --></title>
     <!-- figma:head-end -->
   </head>

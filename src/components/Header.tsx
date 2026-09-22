@@ -12,8 +12,10 @@ interface HeaderProps {
 export default function Header({
   onContact,
   forceLight = false,
-  brandName = "SEA-DOO",
-  brandSub = "PREMIUM USED",
+  /* 品牌默认留空而不是写死默认品牌：页头由数据层驱动，一旦漏传参数应当显示为空，
+     而不是显示一个与服务端不一致的品牌名（此前默认值是硬编码的 "SEA-DOO"）。 */
+  brandName = "",
+  brandSub = "",
   contactLabel = "СВЯЗАТЬСЯ",
 }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
@@ -28,6 +30,8 @@ export default function Header({
 
   return (
     <header
+      /* site-header: 刘海屏顶部安全区（需配合 viewport-fit=cover） */
+      className="site-header"
       style={{
         position: "fixed",
         top: 0,
@@ -44,23 +48,27 @@ export default function Header({
       }}
     >
       <div
+        /* 水平内距兼顾安全区，高度由断点令牌控制 */
+        className="site-header__inner"
         style={{
-          maxWidth: "1400px",
+          maxWidth: "var(--content-max)",
           margin: "0 auto",
-          padding: "0 32px",
-          height: "72px",
+          height: "var(--header-h)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: "12px",
         }}
       >
         <Link
           to="/"
+          className="brand-link"
           style={{
             textDecoration: "none",
             display: "flex",
             flexDirection: "column",
             gap: "1px",
+            minWidth: 0,
           }}
         >
           <span
@@ -71,6 +79,9 @@ export default function Header({
               letterSpacing: "0.18em",
               lineHeight: 1,
               textTransform: "uppercase",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
             {brandName}
@@ -79,29 +90,35 @@ export default function Header({
             style={{
               color: "rgba(255,255,255,0.55)",
               fontWeight: 400,
-              fontSize: "10px",
+              fontSize: "var(--fs-caps)",
               letterSpacing: "0.22em",
               textTransform: "uppercase",
               lineHeight: 1,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
             {brandSub}
           </span>
         </Link>
 
+        {/* 触控目标在窄屏/触屏设备上补足至 48px 高，避免误触 */}
         <button
           onClick={onContact}
+          className="btn-touch"
           style={{
             background: "transparent",
             border: "1px solid rgba(255,255,255,0.55)",
             color: "#FFFFFF",
             fontFamily: "inherit",
             fontWeight: 500,
-            fontSize: "11px",
+            fontSize: "var(--fs-meta)",
             letterSpacing: "0.18em",
             textTransform: "uppercase",
-            padding: "10px 24px",
+            padding: "10px 20px",
             cursor: "pointer",
+            flex: "0 0 auto",
             transition: "background 0.2s, border-color 0.2s",
           }}
           onMouseEnter={(e) => {
